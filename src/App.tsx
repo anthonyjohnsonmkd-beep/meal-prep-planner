@@ -1,0 +1,73 @@
+import { useEffect, useState } from 'react'
+import { Toast } from './components/ui'
+import { todayKey } from './lib/dates'
+import { useData } from './lib/store'
+import { currentScreen, useUI } from './lib/ui'
+import Builder from './screens/Builder'
+import EntryEdit from './screens/EntryEdit'
+import Goals from './screens/Goals'
+import Home from './screens/Home'
+import IngForm from './screens/IngForm'
+import Library from './screens/Library'
+import Pantry from './screens/Pantry'
+import Picker from './screens/Picker'
+import { ConfirmSheet, TypeSheet } from './screens/Sheets'
+import Week from './screens/Week'
+
+function useHydrated() {
+  const [ok, setOk] = useState(useData.persist.hasHydrated())
+  useEffect(() => {
+    const off = useData.persist.onFinishHydration(() => setOk(true))
+    setOk(useData.persist.hasHydrated())
+    // Ask the browser not to evict our data under storage pressure.
+    navigator.storage?.persist?.().catch(() => {})
+    return off
+  }, [])
+  return ok
+}
+
+/** When the app is reopened on a new day, jump to that day. */
+function useDayRollover() {
+  useEffect(() => {
+    let last = todayKey()
+    const check = () => {
+      const now = todayKey()
+      if (document.visibilityState === 'visible' && now !== last) {
+        if (useUI.getState().day === last) useUI.setState({ day: now })
+        last = now
+      }
+    }
+    document.addEventListener('visibilitychange', check)
+    return () => document.removeEventListener('visibilitychange', check)
+  }, [])
+}
+
+export default function App() {
+  const ready = useHydrated()
+  useDayRollover()
+  const screen = useUI(currentScreen)
+  const sheet = useUI((s) => s.sheet)
+  if (!ready) return <div className="min-h-screen" aria-busy="true" />
+
+  const view = {
+    home: <Home />,
+    week: <Week />,
+    library: <Library adding={false} />,
+    libraryAdd: <Library adding />,
+    pantry: <Pantry />,
+    goals: <Goals />,
+    builder: <Builder />,
+    picker: <Picker />,
+    ingForm: <IngForm />,
+    entry: <EntryEdit />,
+  }[screen]
+
+  return (
+    <>
+      {view}
+      {sheet?.kind === 'type' && <TypeSheet />}
+      {sheet?.kind === 'confirm' && <ConfirmSheet />}
+      <Toast />
+    </>
+  )
+}
