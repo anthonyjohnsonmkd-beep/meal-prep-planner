@@ -1,5 +1,5 @@
 import {
-  Apple, ArrowLeft, BookOpen, Carrot, ChartColumn, Drumstick, Egg, House, Minus, MoonStar, Nut, Package, Plus, Sun, Sunrise, Wheat, X,
+  Apple, ArrowLeft, BookOpen, Carrot, ChartColumn, Drumstick, Egg, House, Minus, MoonStar, Nut, Package, Plus, ShoppingBasket, Sun, Sunrise, Wheat, X,
   type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -143,18 +143,19 @@ const NAV: { id: Tab; label: string; Icon: LucideIcon }[] = [
   { id: 'week', label: 'Week', Icon: ChartColumn },
   { id: 'library', label: 'Meals', Icon: BookOpen },
   { id: 'pantry', label: 'Pantry', Icon: Carrot },
+  { id: 'shop', label: 'Shop', Icon: ShoppingBasket },
 ]
 export function Nav() {
   const active = useUI((s) => currentScreen(s))
   const tab = useUI((s) => s.tab)
   return (
     <nav className="fixed left-4 right-4 bottom-safe z-30">
-      <div className="glass rounded-[30px] py-2 px-2 flex justify-around items-center max-w-[560px] mx-auto">
+      <div className="glass rounded-[30px] py-2 px-1 flex justify-around items-center max-w-[560px] mx-auto">
         {NAV.map(({ id, label, Icon }) => {
           const on = id === active
           return (
-            <button key={id} type="button" aria-current={on ? 'page' : undefined} className={`tap flex flex-col items-center gap-0.5 w-16 ${on ? '' : 'opacity-50'}`} onClick={() => tab(id)}>
-              <div className={`w-14 h-8 rounded-full flex items-center justify-center ${on ? 'btn-dark' : ''}`}><Icon size={20} strokeWidth={1.8} /></div>
+            <button key={id} type="button" aria-current={on ? 'page' : undefined} className={`tap flex flex-col items-center gap-0.5 flex-1 min-w-0 ${on ? '' : 'opacity-50'}`} onClick={() => tab(id)}>
+              <div className={`w-12 h-8 rounded-full flex items-center justify-center ${on ? 'btn-dark' : ''}`}><Icon size={20} strokeWidth={1.8} /></div>
               <span className="text-[11px] font-semibold">{label}</span>
             </button>
           )
@@ -176,4 +177,18 @@ export function Toast() {
 
 export function Page({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`max-w-[560px] mx-auto ${className}`}>{children}</div>
+}
+
+/** Raw / Cooked switch for a weighed ingredient in a meal. */
+export function CookToggle({ cooked, onChange }: { cooked: boolean; onChange: (cooked: boolean) => void }) {
+  const opt = (on: boolean, label: string, value: boolean) => (
+    <button type="button" role="radio" aria-checked={on} onClick={() => onChange(value)}
+      className={`tap px-2 h-6 rounded-full text-[11px] font-bold ${on ? 'btn-dark' : 'opacity-60'}`}>{label}</button>
+  )
+  return (
+    <div role="radiogroup" aria-label="Weighed" className="inline-flex p-0.5 rounded-full tint mt-1">
+      {opt(!cooked, 'Raw', false)}
+      {opt(cooked, 'Cooked', true)}
+    </div>
+  )
 }

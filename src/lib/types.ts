@@ -5,7 +5,10 @@ export type MicroKey = 'fiber' | 'sugar' | 'sodium' | 'potassium' | 'calcium' | 
 
 export type Micros = Record<MicroKey, number>
 
-/** Nutrition values are per 1 piece, per 100 g or per 100 ml depending on `unit`. */
+/**
+ * Nutrition values are for the raw product (as on the package),
+ * per 1 piece, per 100 g or per 100 ml depending on `unit`.
+ */
 export interface Ingredient {
   id: string
   name: string
@@ -16,12 +19,19 @@ export interface Ingredient {
   c: number
   f: number
   m: Micros
+  /** Cooked weight per 1 unit of raw weight (chicken ≈ 0.75, rice ≈ 2.5). Only for grams/ml. */
+  yield?: number
+  /** Pack size in the ingredient's unit (pieces, g or ml), for the shopping list. */
+  pack?: number
+  /** Marked as running low: always goes on the shopping list. */
+  low?: boolean
 }
 
-/** qty is a count for `piece`, otherwise grams or millilitres. */
+/** qty is a count for `piece`, otherwise grams or millilitres, weighed raw unless `cooked`. */
 export interface Item {
   ing: string
   qty: number
+  cooked?: boolean
 }
 
 /** A saved recipe in the library. */
@@ -49,14 +59,27 @@ export interface Targets {
   f: number
 }
 
+export interface ShopState {
+  /** First shopping day offset from today: 0 = today, 1 = tomorrow. */
+  startOffset: 0 | 1
+  /** Number of days the shop covers. */
+  days: number
+  /** Ingredient id -> raw amount that was in the basket when ticked. */
+  checked: Record<string, number>
+  /** Ingredient id -> raw amount already at home. */
+  have: Record<string, number>
+  extras: { id: string; name: string; done: boolean }[]
+}
+
 export interface Data {
-  version: 1
+  version: 2
   ings: Ingredient[]
   meals: Meal[]
   plan: Record<string, Entry[]>
   targets: Targets
   favs: string[]
   used: Record<string, number>
+  shop: ShopState
 }
 
 export interface Totals {

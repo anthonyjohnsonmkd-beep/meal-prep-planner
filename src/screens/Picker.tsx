@@ -1,7 +1,7 @@
 import { Check, ChevronRight, History, Package, PencilLine, Plus, Search, Star } from 'lucide-react'
 import { useState } from 'react'
 import { BackButton, Page } from '../components/ui'
-import { emptyMicrosDraft } from './IngForm'
+import { blankIngDraft } from './IngForm'
 import { defaultQty, perText, r0, r1 } from '../lib/nutrition'
 import { useData } from '../lib/store'
 import type { Ingredient } from '../lib/types'
@@ -37,7 +37,7 @@ export default function Picker() {
     back()
   }
   const createNew = () => {
-    set({ ingDraft: { ctx: 'builder', name: q.trim(), unit: 'piece', cat: 'other', kcal: '', p: '', c: '', f: '', micros: emptyMicrosDraft(), amount: 1 } })
+    set({ ingDraft: blankIngDraft('builder', q.trim()) })
     go('ingForm')
   }
 

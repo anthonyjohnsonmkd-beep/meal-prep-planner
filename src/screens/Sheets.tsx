@@ -1,9 +1,11 @@
-import { Check, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Pencil, SlidersHorizontal } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
-import { MacroChips, Primary, Stepper, TYPE_ICON, TypeBadge } from '../components/ui'
+import { CatBadge, MacroChips, Primary, Stepper, TYPE_ICON, TypeBadge } from '../components/ui'
 import { TYPES, typeInfo } from '../lib/constants'
-import { DOW, dayName, fromKey, todayKey, weekOf } from '../lib/dates'
-import { qtyLong, qtyShort, r0, sameItems, signed, stepOf, totals } from '../lib/nutrition'
+import { DOW, dayName, fromKey, shortDate, todayKey, weekOf } from '../lib/dates'
+import { qtyLong, qtyShort, r0, sameItems, shopAmount, signed, stepOf, totals } from '../lib/nutrition'
+import { draftFromIngredient } from './IngForm'
+import { lineAmount, useShoppingList } from './Shop'
 import { useData } from '../lib/store'
 import { useUI } from '../lib/ui'
 
@@ -120,7 +122,7 @@ export function ConfirmSheet() {
               return (
                 <div key={it.ing} className="flex items-center justify-between py-2.5 gap-2">
                   <div className="min-w-0">
-                    <div className="text-[14px] font-semibold truncate">{g.name}</div>
+                    <div className="text-[14px] font-semibold truncate">{g.name}{it.cooked && <span className="font-medium opacity-60"> · cooked</span>}</div>
                     <div className={`text-[12px] ${changed ? 'text-amber font-semibold' : 'opacity-50'}`}>{changed && saved !== undefined ? `Saved: ${qtyLong(g.unit, saved)}` : 'As saved'}</div>
                   </div>
                   <Stepper label={g.name} value={qtyShort(g.unit, it.qty)} highlight={changed}
@@ -154,6 +156,87 @@ export function ConfirmSheet() {
       <Primary onClick={confirm} disabled={!n}>
         {n ? <><Check size={20} />{n === 1 ? `Add to ${dayName(sheet.days[0])}` : `Add to ${n} days`}</> : 'Pick a day'}
       </Primary>
+    </SheetFrame>
+  )
+}
+
+export function ShopItemSheet() {
+  const { sheet, set, go } = useUI()
+  const { lines } = useShoppingList()
+  const ings = useData((s) => s.ings)
+  const have = useData((s) => s.shop.have)
+  const { setHave, toggleLow, tick } = useData.getState()
+  if (sheet?.kind !== 'shopItem') return null
+  const g = ings.find((x) => x.id === sheet.ing)
+  if (!g) return null
+  const l = lines.find((x) => x.ing.id === g.id)
+  const close = () => set({ sheet: null })
+  const step = g.unit === 'piece' ? 1 : g.pack && g.pack >= 100 ? 50 : 10
+  const h = have[g.id] ?? 0
+  const byDay = new Map<string, { meal: string; raw: number }[]>()
+  for (const s2 of l?.sources ?? []) byDay.set(s2.day, [...(byDay.get(s2.day) ?? []), { meal: s2.meal, raw: s2.raw }])
+
+  return (
+    <SheetFrame onClose={close} label={g.name}>
+      <div className="flex items-center gap-3 mb-4">
+        <CatBadge cat={g.cat} size={48} />
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[20px] font-semibold leading-tight">{g.name}</h2>
+          <div className="text-[13px] opacity-60">{l ? `Buy ${lineAmount(l)}` : 'Covered. Nothing to buy'}</div>
+        </div>
+      </div>
+
+      {l && l.need > 0 && (
+        <div className="card p-4 mb-3">
+          <div className="flex justify-between items-baseline mb-2">
+            <h3 className="text-[14px] font-bold">Planned meals need</h3>
+            <span className="text-[16px] font-semibold">{shopAmount(g.unit, l.need)}{g.unit !== 'piece' ? ' raw' : ''}</span>
+          </div>
+          <div className="space-y-1.5">
+            {[...byDay].map(([day, ms]) => (
+              <div key={day} className="flex justify-between gap-3 text-[13px]">
+                <span className="opacity-60 shrink-0 w-[86px]">{DOW[fromKey(day).getDay()].slice(0, 3)} {shortDate(day)}</span>
+                <span className="flex-1 min-w-0 truncate">{ms.map((m) => m.meal).join(', ')}</span>
+                <span className="font-semibold shrink-0">{shopAmount(g.unit, ms.reduce((a, m) => a + m.raw, 0))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="card p-4 mb-3 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[15px] font-bold">Already have</div>
+            <div className="text-[12px] opacity-60">Taken off what you need to buy</div>
+          </div>
+          <Stepper label="already have" value={shopAmount(g.unit, h)} onChange={(d) => setHave(g.id, Math.max(0, h + d * step))} />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[15px] font-bold">Running low</div>
+            <div className="text-[12px] opacity-60">Keep it on the list even if no meal needs it</div>
+          </div>
+          <button type="button" role="switch" aria-checked={!!g.low} aria-label="Running low"
+            className={`tap w-12 h-7 rounded-full relative shrink-0 ${g.low ? 'bg-apricot' : 'tint border border-forest-900/10'}`}
+            onClick={() => toggleLow(g.id)}>
+            <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all" style={{ left: g.low ? 22 : 2 }} />
+          </button>
+        </div>
+        <button type="button" className="tap w-full flex items-center justify-between text-left" onClick={() => { set({ sheet: null, ingDraft: draftFromIngredient(g) }); go('ingForm') }}>
+          <div>
+            <div className="text-[15px] font-bold">Pack size</div>
+            <div className="text-[12px] opacity-60">{g.pack ? `Comes in ${shopAmount(g.unit, g.pack)}${g.unit === 'piece' ? ' pieces' : ''}` : 'Not set. Add it to see how many packs to buy'}</div>
+          </div>
+          <span className="flex items-center gap-1 text-[13px] font-bold text-forest-700"><Pencil size={14} />Edit</span>
+        </button>
+      </div>
+
+      {l && (
+        <Primary onClick={() => { tick(g.id, l.done ? null : l.buy); close() }}>
+          <Check size={20} />{l.done ? 'Take out of basket' : 'In the basket'}
+        </Primary>
+      )}
     </SheetFrame>
   )
 }

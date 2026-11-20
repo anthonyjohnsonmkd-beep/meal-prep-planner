@@ -12,7 +12,7 @@ describe('totals', () => {
   })
   it('scales grams and ml per 100', () => {
     const t = totals([{ ing: 'chicken', qty: 150 }, { ing: 'milk', qty: 200 }], SEED_INGREDIENTS)
-    expect(t.kcal).toBeCloseTo(165 * 1.5 + 50 * 2)
+    expect(t.kcal).toBeCloseTo(120 * 1.5 + 50 * 2)
   })
   it('ignores unknown ingredients', () => {
     expect(totals([{ ing: 'nope', qty: 2 }], SEED_INGREDIENTS).kcal).toBe(0)

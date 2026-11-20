@@ -1,6 +1,14 @@
 import { MICROS } from './constants'
 import type { Ingredient, Item, Micros, Totals, Unit } from './types'
 
+/** Cooking can only be set for weighed ingredients that have a cooked-weight ratio. */
+export const canCook = (g: Pick<Ingredient, 'unit'>) => g.unit !== 'piece'
+
+/** The raw amount an item stands for: cooked weights are converted back using the ingredient's yield. */
+export const rawQty = (g: Pick<Ingredient, 'unit' | 'yield'>, it: Pick<Item, 'qty' | 'cooked'>) =>
+  it.cooked && canCook(g) && g.yield ? it.qty / g.yield : it.qty
+
+
 export const emptyMicros = (): Micros => ({ fiber: 0, sugar: 0, sodium: 0, potassium: 0, calcium: 0, iron: 0, vitc: 0, vitd: 0 })
 
 /** How many "nutrition units" a quantity is: pieces count directly, grams/ml are per 100. */
@@ -12,7 +20,7 @@ export function totals(items: Item[], ings: Ingredient[]): Totals {
   for (const it of items) {
     const g = byId.get(it.ing)
     if (!g) continue
-    const x = factor(g.unit, it.qty)
+    const x = factor(g.unit, rawQty(g, it))
     t.kcal += g.kcal * x
     t.p += g.p * x
     t.c += g.c * x
@@ -43,7 +51,7 @@ export const qtyShort = (unit: Unit, q: number) => (unit === 'piece' ? String(q)
 export const qtyLong = (unit: Unit, q: number) => (unit === 'piece' ? `${q} ${q === 1 ? 'piece' : 'pieces'}` : `${q}${unitSuffix(unit)}`)
 
 export const sameItems = (a: Item[], b: Item[]) =>
-  a.length === b.length && a.every((x, i) => x.ing === b[i].ing && x.qty === b[i].qty)
+  a.length === b.length && a.every((x, i) => x.ing === b[i].ing && x.qty === b[i].qty && !!x.cooked === !!b[i].cooked)
 
 export const r0 = (n: number) => Math.round(n).toLocaleString('en-US')
 export const r1 = (n: number) => {
@@ -54,4 +62,31 @@ export const r1 = (n: number) => {
 export const signed = (n: number) => {
   const v = Math.round(n)
   return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toLocaleString('en-US')
+}
+
+/** Common cooked-weight ratios (cooked grams per raw gram). */
+export const YIELD_PRESETS: { label: string; value: number }[] = [
+  { label: 'Chicken & meat', value: 0.75 },
+  { label: 'Fish', value: 0.8 },
+  { label: 'Vegetables', value: 0.9 },
+  { label: 'Pasta', value: 2.2 },
+  { label: 'Rice', value: 2.5 },
+  { label: 'Quinoa', value: 2.7 },
+]
+
+/** Human-friendly amount for shopping: kg / L above 1000, rounded up to sensible steps. */
+export function shopAmount(unit: Unit, raw: number) {
+  if (unit === 'piece') {
+    const n = Math.ceil(raw - 1e-9)
+    return `${n}`
+  }
+  const big = unit === '100ml' ? 'L' : 'kg'
+  const small = unit === '100ml' ? 'ml' : 'g'
+  const step = raw >= 1000 ? 50 : 10
+  const v = Math.ceil(raw / step - 1e-9) * step
+  if (v >= 1000) {
+    const k = v / 1000
+    return `${Number.isInteger(k) ? k : k.toFixed(k * 10 === Math.round(k * 10) ? 1 : 2)} ${big}`
+  }
+  return `${v} ${small}`
 }

@@ -1,9 +1,10 @@
 import { Copy, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { BackButton, Footer, IconButton, Label, Page, Primary, Stepper, TYPE_ICON } from '../components/ui'
+import { BackButton, CookToggle, Footer, IconButton, Label, Page, Primary, Stepper, TYPE_ICON } from '../components/ui'
+import { draftFromIngredient } from './IngForm'
 import { TYPES, typeInfo } from '../lib/constants'
 import { dayName, todayKey } from '../lib/dates'
-import { qtyShort, r0, r1, stepOf, totals } from '../lib/nutrition'
+import { canCook, qtyShort, r0, r1, stepOf, totals } from '../lib/nutrition'
 import { useData } from '../lib/store'
 import { useUI } from '../lib/ui'
 
@@ -124,6 +125,16 @@ export default function Builder() {
                   <div className="flex-1 min-w-0">
                     <div className="text-[15px] font-bold truncate">{g.name}</div>
                     <div className="text-[12px] opacity-60">{r0(x.kcal)} kcal · P {r1(x.p)} · C {r1(x.c)} · F {r1(x.f)}</div>
+                    {canCook(g) && (
+                      <CookToggle cooked={!!it.cooked} onChange={(cooked) => {
+                        if (cooked && !g.yield) {
+                          set({ ingDraft: draftFromIngredient(g), pendingCook: { ing: g.id, target: 'draft' } })
+                          go('ingForm')
+                          return say(`Set how much ${g.name} weighs cooked first`)
+                        }
+                        update({ items: draft.items.map((y, i) => (i === ix ? { ...y, cooked: cooked || undefined } : y)) })
+                      }} />
+                    )}
                   </div>
                   <Stepper label={g.name} value={qtyShort(g.unit, it.qty)} onChange={(d) => {
                     const items = draft.items.map((y, i) => (i === ix ? { ...y, qty: Math.max(0, y.qty + d * stepOf(g.unit)) } : y)).filter((y) => y.qty > 0)

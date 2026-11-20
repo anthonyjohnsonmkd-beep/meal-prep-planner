@@ -6,7 +6,7 @@ import { perText, r0 } from '../lib/nutrition'
 import { usedIn, useData } from '../lib/store'
 import type { Category, Ingredient } from '../lib/types'
 import { useUI } from '../lib/ui'
-import { draftFromIngredient, emptyMicrosDraft } from './IngForm'
+import { blankIngDraft, draftFromIngredient } from './IngForm'
 
 type Filter = 'all' | 'fav' | Category
 
@@ -27,7 +27,7 @@ export default function Pantry() {
   const visible = groups.filter((g) => g.list.length)
 
   const addNew = () => {
-    set({ ingDraft: { ctx: 'pantry', name: '', unit: 'piece', cat: filter !== 'all' && filter !== 'fav' ? filter : 'other', kcal: '', p: '', c: '', f: '', micros: emptyMicrosDraft(), amount: 1 } })
+    set({ ingDraft: blankIngDraft('pantry', '', filter !== 'all' && filter !== 'fav' ? filter : 'other') })
     go('ingForm')
   }
   const edit = (g: Ingredient) => {
@@ -83,7 +83,7 @@ export default function Pantry() {
                     <button type="button" className="tap flex-1 min-w-0 flex items-center gap-3 pl-3.5 py-3 text-left" onClick={() => edit(g)}>
                       <CatBadge cat={g.cat} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[15px] font-bold truncate">{g.name}</div>
+                        <div className="text-[15px] font-bold truncate flex items-center gap-1.5">{g.name}{g.low && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-peach text-[#B5561F] shrink-0">LOW</span>}</div>
                         <div className="text-[12px] opacity-60 mt-0.5">{r0(g.kcal)} kcal / {perText(g.unit)}{n ? ` · in ${n} ${n === 1 ? 'meal' : 'meals'}` : ''}</div>
                         <div className="mt-1.5"><MacroChips t={g} small decimals /></div>
                       </div>

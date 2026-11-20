@@ -2,8 +2,8 @@ import { del, get, set } from 'idb-keyval'
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import { freshData } from './seed'
-import type { Data, Entry, Ingredient, Item, Meal, MealType, Targets } from './types'
+import { emptyShop, freshData, SEED_INGREDIENTS } from './seed'
+import type { Data, Entry, Ingredient, Item, Meal, MealType, ShopState, Targets } from './types'
 
 const idbStorage: StateStorage = {
   getItem: async (name) => (await get<string>(name)) ?? null,
@@ -28,6 +28,15 @@ interface Actions {
   touch: (ids: string[]) => void
   setTarget: (key: keyof Targets, value: number) => void
   replaceAll: (data: Data) => void
+  toggleLow: (id: string) => void
+  setShop: (p: Partial<Pick<ShopState, 'startOffset' | 'days'>>) => void
+  tick: (id: string, amount: number | null) => void
+  setHave: (id: string, amount: number) => void
+  addExtra: (name: string) => void
+  toggleExtra: (id: string) => void
+  removeExtra: (id: string) => void
+  /** Clear ticks and "have" amounts, drop bought extras, and un-flag running-low items that were bought. */
+  finishShopping: (boughtIds: string[]) => void
 }
 
 export type Store = Data & Actions
@@ -122,12 +131,56 @@ export const useData = create<Store>()(
           s.targets[key] = Math.max(0, value)
         }),
       replaceAll: (data) => setState(() => ({ ...data })),
+      toggleLow: (id) =>
+        setState((s) => {
+          const g = s.ings.find((x) => x.id === id)
+          if (g) g.low = !g.low
+        }),
+      setShop: (p) =>
+        setState((s) => {
+          Object.assign(s.shop, p)
+        }),
+      tick: (id, amount) =>
+        setState((s) => {
+          if (amount === null) delete s.shop.checked[id]
+          else s.shop.checked[id] = amount
+        }),
+      setHave: (id, amount) =>
+        setState((s) => {
+          if (amount > 0) s.shop.have[id] = amount
+          else delete s.shop.have[id]
+          delete s.shop.checked[id]
+        }),
+      addExtra: (name) =>
+        setState((s) => {
+          s.shop.extras.push({ id: uid(), name, done: false })
+        }),
+      toggleExtra: (id) =>
+        setState((s) => {
+          const x = s.shop.extras.find((e) => e.id === id)
+          if (x) x.done = !x.done
+        }),
+      removeExtra: (id) =>
+        setState((s) => {
+          s.shop.extras = s.shop.extras.filter((e) => e.id !== id)
+        }),
+      finishShopping: (boughtIds) =>
+        setState((s) => {
+          for (const id of boughtIds) {
+            const g = s.ings.find((x) => x.id === id)
+            if (g) g.low = false
+          }
+          s.shop.checked = {}
+          s.shop.have = {}
+          s.shop.extras = s.shop.extras.filter((e) => !e.done)
+        }),
     })),
     {
       name: 'meal-prep-planner',
       storage: createJSONStorage(() => idbStorage),
-      version: 1,
-      partialize: (s): Data => ({ version: 1, ings: s.ings, meals: s.meals, plan: s.plan, targets: s.targets, favs: s.favs, used: s.used }),
+      version: 2,
+      migrate: (persisted, version) => migrate(persisted as Data, version),
+      partialize: (s): Data => ({ version: 2, ings: s.ings, meals: s.meals, plan: s.plan, targets: s.targets, favs: s.favs, used: s.used, shop: s.shop }),
     },
   ),
 )
@@ -135,7 +188,32 @@ export const useData = create<Store>()(
 /** Plain data snapshot for export. */
 export const snapshot = (): Data => {
   const s = useData.getState()
-  return { version: 1, ings: s.ings, meals: s.meals, plan: s.plan, targets: s.targets, favs: s.favs, used: s.used }
+  return { version: 2, ings: s.ings, meals: s.meals, plan: s.plan, targets: s.targets, favs: s.favs, used: s.used, shop: s.shop }
+}
+
+/**
+ * v1 → v2: ingredients are now stored raw. The old example "Chicken breast (cooked)" and
+ * "Quinoa (cooked)" become raw ingredients with a cooked-weight ratio, and every meal or day
+ * that used them is marked as cooked, so totals stay the same. Edited ingredients are left alone.
+ */
+export function migrate(d: Data, version: number): Data {
+  if (version >= 2) return d
+  const old: Record<string, { kcal: number; p: number }> = { chicken: { kcal: 165, p: 31 }, quinoa: { kcal: 120, p: 4.4 } }
+  const converted = new Set<string>()
+  d.ings = d.ings.map((g) => {
+    const seed = SEED_INGREDIENTS.find((x) => x.id === g.id)
+    const o = old[g.id]
+    if (seed && o && g.kcal === o.kcal && g.p === o.p) {
+      converted.add(g.id)
+      return { ...seed }
+    }
+    if (seed?.pack && g.pack === undefined) return { ...g, pack: seed.pack }
+    return g
+  })
+  const mark = (items: Item[]) => items.map((i) => (converted.has(i.ing) ? { ...i, cooked: true } : i))
+  d.meals = d.meals.map((m) => ({ ...m, items: mark(m.items) }))
+  for (const day of Object.keys(d.plan)) d.plan[day] = d.plan[day].map((e) => ({ ...e, items: mark(e.items), base: mark(e.base) }))
+  return { ...d, version: 2, shop: d.shop ?? emptyShop() }
 }
 
 export function isValidData(x: unknown): x is Data {

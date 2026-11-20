@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { todayKey } from './dates'
 import type { Category, Item, MealType, MicroKey, Unit } from './types'
 
-export type Tab = 'home' | 'week' | 'library' | 'pantry'
+export type Tab = 'home' | 'week' | 'library' | 'pantry' | 'shop'
 export type ScreenName = Tab | 'goals' | 'libraryAdd' | 'builder' | 'picker' | 'ingForm' | 'entry'
 
 export interface MealDraft {
@@ -26,12 +26,17 @@ export interface IngDraft {
   f: string
   micros: Partial<Record<MicroKey, string>>
   amount: number
+  /** Cooked grams per 100 g raw, as typed. */
+  yieldPct: string
+  pack: string
+  low: boolean
 }
 
 export type Sheet =
   | null
   | { kind: 'type' }
   | { kind: 'confirm'; mealId: string; items: Item[]; days: string[]; adjustOpen: boolean }
+  | { kind: 'shopItem'; ing: string }
 
 interface UI {
   stack: ScreenName[]
@@ -40,6 +45,8 @@ interface UI {
   draft: MealDraft | null
   ingDraft: IngDraft | null
   edit: { day: string; id: string; updateMeal: boolean } | null
+  /** Waiting for a cooked-weight ratio before switching this ingredient to cooked. */
+  pendingCook: { ing: string; target: 'draft' | 'entry' } | null
   sheet: Sheet
   toast: { id: number; text: string } | null
   go: (s: ScreenName) => void
@@ -58,6 +65,7 @@ export const useUI = create<UI>()((set, get) => ({
   draft: null,
   ingDraft: null,
   edit: null,
+  pendingCook: null,
   sheet: null,
   toast: null,
   go: (s) => {

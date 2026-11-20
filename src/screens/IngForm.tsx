@@ -1,19 +1,26 @@
-import { Check, CircleCheck, Info, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, CircleCheck, CookingPot, Info, ShoppingBasket, Trash2, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { BackButton, CAT_ICON, Footer, IconButton, Label, Page, Primary, Stepper } from '../components/ui'
 import { CATS, MICROS } from '../lib/constants'
-import { kcalCheck, r0 } from '../lib/nutrition'
+import { kcalCheck, r0, YIELD_PRESETS } from '../lib/nutrition'
 import { usedIn, useData } from '../lib/store'
-import type { Ingredient, MicroKey, Unit } from '../lib/types'
+import type { Category, Ingredient, Item, MicroKey, Unit } from '../lib/types'
 import { useUI, type IngDraft } from '../lib/ui'
 
 export const emptyMicrosDraft = (): IngDraft['micros'] => ({})
+
+export const blankIngDraft = (ctx: IngDraft['ctx'], name = '', cat: Category = 'other'): IngDraft => ({
+  ctx, name, unit: 'piece', cat, kcal: '', p: '', c: '', f: '', micros: emptyMicrosDraft(), amount: 1, yieldPct: '', pack: '', low: false,
+})
 
 export const draftFromIngredient = (g: Ingredient): IngDraft => ({
   ctx: 'pantry', editId: g.id, name: g.name, unit: g.unit, cat: g.cat,
   kcal: String(g.kcal), p: String(g.p), c: String(g.c), f: String(g.f),
   micros: Object.fromEntries(MICROS.map(({ key }) => [key, g.m[key] ? String(g.m[key]) : ''])),
   amount: g.unit === 'piece' ? 1 : 100,
+  yieldPct: g.yield ? String(Math.round(g.yield * 100)) : '',
+  pack: g.pack ? String(g.pack) : '',
+  low: !!g.low,
 })
 
 const num = (s: string | undefined) => {
@@ -83,6 +90,9 @@ export default function IngForm() {
     const vals: Omit<Ingredient, 'id'> = {
       name: d.name.trim(), unit: d.unit, cat: d.cat, kcal: num(d.kcal), p: num(d.p), c: num(d.c), f: num(d.f),
       m: Object.fromEntries(MICROS.map(({ key }) => [key, num(d.micros[key])])) as Ingredient['m'],
+      yield: d.unit !== 'piece' && num(d.yieldPct) > 0 ? num(d.yieldPct) / 100 : undefined,
+      pack: num(d.pack) > 0 ? num(d.pack) : undefined,
+      low: d.low || undefined,
     }
     const id = saveIngredient(vals, d.editId)
     if (inMeal && draft) {
@@ -90,9 +100,23 @@ export default function IngForm() {
       useUI.setState((s) => ({ stack: s.stack.slice(0, -2) }))
       return say(`${vals.name} added to your meal and pantry`)
     }
+    // Coming from a Raw/Cooked switch: now that the ratio is set, switch that ingredient to cooked.
+    const pending = useUI.getState().pendingCook
+    if (pending && pending.ing === id) {
+      set({ pendingCook: null })
+      if (vals.yield) {
+        const mark = (items: Item[]) => items.map((x) => (x.ing === id ? { ...x, cooked: true } : x))
+        const ui = useUI.getState()
+        if (pending.target === 'draft' && ui.draft) set({ draft: { ...ui.draft, items: mark(ui.draft.items) } })
+        if (pending.target === 'entry' && ui.edit) {
+          const e = useData.getState().plan[ui.edit.day]?.find((x) => x.id === ui.edit!.id)
+          if (e) useData.getState().setEntryItems(ui.edit.day, e.id, mark(e.items))
+        }
+      }
+    }
     set({ ingDraft: null })
     back()
-    say(edit ? `${vals.name} updated` : `${vals.name} added to your pantry`)
+    say(pending && vals.yield ? `Saved. ${vals.name} is now weighed cooked` : edit ? `${vals.name} updated` : `${vals.name} added to your pantry`)
   }
 
   const remove = () => {
@@ -144,7 +168,7 @@ export default function IngForm() {
         </section>
 
         <section>
-          <Label>Nutrition per {per}</Label>
+          <Label>Nutrition per {per} raw <span className="font-medium opacity-70">· as on the package</span></Label>
           <div className="mt-2 space-y-2">
             <NumField id="ing-kcal" label="Calories" unit="kcal" value={d.kcal} onChange={(v) => update({ kcal: v })} />
             <div className="grid grid-cols-3 gap-2">
@@ -163,6 +187,66 @@ export default function IngForm() {
               <NumField key={key} id={`ing-m-${key}`} label={label} unit={unit} value={d.micros[key] ?? ''}
                 onChange={(v) => update({ micros: { ...d.micros, [key as MicroKey]: v } })} />
             ))}
+          </div>
+        </section>
+
+        {d.unit !== 'piece' && (
+          <section>
+            <Label>Cooking <span className="font-medium opacity-70">· optional</span></Label>
+            <div className="card p-4 mt-2 space-y-3">
+              <div className="flex items-center gap-3">
+                <CookingPot size={20} className="text-sage-500 shrink-0" />
+                <label htmlFor="ing-yield" className="flex-1 text-[14px] font-semibold flex items-center gap-2 flex-wrap">
+                  100 {d.unit === '100ml' ? 'ml' : 'g'} raw weighs
+                  <span className="field inline-flex items-baseline gap-1 rounded-[12px] soft border-2 px-2 py-1">
+                    <input id="ing-yield" inputMode="numeric" className="w-14 text-[16px] font-semibold text-center" placeholder="—" value={d.yieldPct}
+                      onChange={(e) => update({ yieldPct: e.target.value.replace(/[^0-9.,]/g, '') })} />
+                    <span className="text-[12px] opacity-50">{d.unit === '100ml' ? 'ml' : 'g'}</span>
+                  </span>
+                  cooked
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {YIELD_PRESETS.map((p) => {
+                  const v = String(Math.round(p.value * 100))
+                  return (
+                    <button key={p.label} type="button" aria-pressed={d.yieldPct === v} onClick={() => update({ yieldPct: v })}
+                      className={`tap h-8 px-3 rounded-full text-[12px] font-semibold ${d.yieldPct === v ? 'btn-dark' : 'soft'}`}>
+                      {p.label} {v} g
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[12px] opacity-60">Lets you weigh it cooked in a meal. The app converts it back to raw for nutrition and the shopping list.</p>
+            </div>
+          </section>
+        )}
+
+        <section>
+          <Label>Shopping <span className="font-medium opacity-70">· optional</span></Label>
+          <div className="card p-4 mt-2 space-y-3">
+            <div className="flex items-center gap-3">
+              <ShoppingBasket size={20} className="text-sage-500 shrink-0" />
+              <label htmlFor="ing-pack" className="flex-1 text-[14px] font-semibold flex items-center gap-2 flex-wrap">
+                Comes in packs of
+                <span className="field inline-flex items-baseline gap-1 rounded-[12px] soft border-2 px-2 py-1">
+                  <input id="ing-pack" inputMode="numeric" className="w-16 text-[16px] font-semibold text-center" placeholder="—" value={d.pack}
+                    onChange={(e) => update({ pack: e.target.value.replace(/[^0-9.,]/g, '') })} />
+                  <span className="text-[12px] opacity-50">{d.unit === 'piece' ? 'pieces' : d.unit === '100ml' ? 'ml' : 'g'}</span>
+                </span>
+              </label>
+            </div>
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div>
+                <div className="text-[14px] font-semibold">Running low</div>
+                <div className="text-[12px] opacity-60">Puts it on the shopping list even if no meal needs it</div>
+              </div>
+              <button type="button" role="switch" aria-checked={d.low} aria-label="Running low"
+                className={`tap w-12 h-7 rounded-full relative shrink-0 ${d.low ? 'bg-apricot' : 'tint border border-forest-900/10'}`}
+                onClick={() => update({ low: !d.low })}>
+                <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all" style={{ left: d.low ? 22 : 2 }} />
+              </button>
+            </div>
           </div>
         </section>
 

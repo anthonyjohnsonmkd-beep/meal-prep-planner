@@ -82,7 +82,7 @@ export default function Library({ adding }: { adding: boolean }) {
             const t = totals(m.items, ings)
             const summary = m.items.map((it) => {
               const g = ings.find((x) => x.id === it.ing)
-              return g ? `${g.name} ${g.unit === 'piece' ? `×${it.qty}` : `${it.qty}${unitSuffix(g.unit)}`}` : ''
+              return g ? `${g.name} ${g.unit === 'piece' ? `×${it.qty}` : `${it.qty}${unitSuffix(g.unit)}${it.cooked ? ' cooked' : ''}`}` : ''
             }).join(' · ')
             return (
               <div key={m.id} className="card relative">

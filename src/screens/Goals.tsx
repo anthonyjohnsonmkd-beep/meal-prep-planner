@@ -4,7 +4,7 @@ import { BackButton, Label, Page } from '../components/ui'
 import { MICROS } from '../lib/constants'
 import { todayKey } from '../lib/dates'
 import { freshData } from '../lib/seed'
-import { isValidData, snapshot, useData } from '../lib/store'
+import { isValidData, migrate, snapshot, useData } from '../lib/store'
 import type { Targets } from '../lib/types'
 import { useUI } from '../lib/ui'
 
@@ -41,7 +41,7 @@ export default function Goals() {
       const data = JSON.parse(await f.text())
       if (!isValidData(data)) throw new Error('bad')
       if (!window.confirm('Replace everything in the app with this backup?')) return
-      replaceAll({ ...freshData(), ...data, version: 1 })
+      replaceAll(migrate({ ...freshData(), ...data }, data.version ?? 1))
       say('Backup restored')
     } catch {
       say("That file isn't a Meal Prep backup")

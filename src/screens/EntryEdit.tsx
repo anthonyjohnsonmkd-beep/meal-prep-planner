@@ -1,9 +1,10 @@
 import { ChevronDown, ChevronUp, Copy, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { BackButton, Footer, IconButton, Label, MicroGrid, Page, Primary, Stepper, TypeBadge } from '../components/ui'
+import { BackButton, CookToggle, Footer, IconButton, Label, MicroGrid, Page, Primary, Stepper, TypeBadge } from '../components/ui'
+import { draftFromIngredient } from './IngForm'
 import { typeInfo } from '../lib/constants'
 import { dayName } from '../lib/dates'
-import { defaultQty, qtyLong, qtyShort, r0, sameItems, signed, stepOf, totals } from '../lib/nutrition'
+import { canCook, defaultQty, qtyLong, qtyShort, r0, sameItems, signed, stepOf, totals } from '../lib/nutrition'
 import { useData } from '../lib/store'
 import { useUI } from '../lib/ui'
 
@@ -24,7 +25,7 @@ export default function EntryEdit() {
   const ty = typeInfo(e.type)
   const meal = meals.find((m) => m.id === e.mealId)
   const inEntry = new Set(e.items.map((i) => i.ing))
-  const savedQty = (ing: string) => e.base.find((x) => x.ing === ing)?.qty
+  const savedItem = (ing: string) => e.base.find((x) => x.ing === ing)
 
   const save = () => {
     commitEntry(edit.day, e.id, edit.updateMeal && !!meal)
@@ -98,15 +99,26 @@ export default function EntryEdit() {
             {e.items.map((it, ix) => {
               const g = ings.find((x) => x.id === it.ing)
               if (!g) return null
-              const q = savedQty(it.ing)
-              const changed = q !== it.qty
+              const saved = savedItem(it.ing)
+              const q = saved?.qty
+              const changed = !saved || saved.qty !== it.qty || !!saved.cooked !== !!it.cooked
               return (
                 <div key={it.ing} className="card p-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="text-[15px] font-bold truncate">{g.name}</div>
                     <div className={`text-[12px] ${changed ? 'text-amber font-bold' : 'opacity-50'}`}>
-                      {q === undefined ? 'Added this day' : changed ? `Saved: ${qtyLong(g.unit, q)}` : 'As saved'}
+                      {q === undefined ? 'Added this day' : changed ? `Saved: ${qtyLong(g.unit, q)}${saved?.cooked ? ' cooked' : canCook(g) ? ' raw' : ''}` : 'As saved'}
                     </div>
+                    {canCook(g) && (
+                      <CookToggle cooked={!!it.cooked} onChange={(cooked) => {
+                        if (cooked && !g.yield) {
+                          set({ ingDraft: draftFromIngredient(g), pendingCook: { ing: g.id, target: 'entry' } })
+                          go('ingForm')
+                          return say(`Set how much ${g.name} weighs cooked first`)
+                        }
+                        setEntryItems(edit.day, e.id, e.items.map((x, i) => (i === ix ? { ...x, cooked: cooked || undefined } : x)))
+                      }} />
+                    )}
                   </div>
                   <Stepper label={g.name} value={qtyShort(g.unit, it.qty)} highlight={changed}
                     onChange={(d) => setEntryItems(edit.day, e.id, e.items.map((x, i) => (i === ix ? { ...x, qty: Math.max(0, x.qty + d * stepOf(g.unit)) } : x)))} />

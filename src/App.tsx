@@ -11,7 +11,8 @@ import IngForm from './screens/IngForm'
 import Library from './screens/Library'
 import Pantry from './screens/Pantry'
 import Picker from './screens/Picker'
-import { ConfirmSheet, TypeSheet } from './screens/Sheets'
+import { ConfirmSheet, ShopItemSheet, TypeSheet } from './screens/Sheets'
+import Shop from './screens/Shop'
 import Week from './screens/Week'
 
 function useHydrated() {
@@ -55,6 +56,7 @@ export default function App() {
     library: <Library adding={false} />,
     libraryAdd: <Library adding />,
     pantry: <Pantry />,
+    shop: <Shop />,
     goals: <Goals />,
     builder: <Builder />,
     picker: <Picker />,
@@ -67,6 +69,7 @@ export default function App() {
       {view}
       {sheet?.kind === 'type' && <TypeSheet />}
       {sheet?.kind === 'confirm' && <ConfirmSheet />}
+      {sheet?.kind === 'shopItem' && <ShopItemSheet />}
       <Toast />
     </>
   )
