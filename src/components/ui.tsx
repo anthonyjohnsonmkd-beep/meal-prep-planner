@@ -119,15 +119,19 @@ export function MicroGrid({ t, base }: { t: Totals; base?: Totals | null }) {
   )
 }
 
-export function MacroBar({ label, value, target, gradient }: { label: string; value: number; target: number; gradient: string }) {
+export function MacroBar({ label, value, target, gradient, planned }: { label: string; value: number; target: number; gradient: string; planned?: number }) {
+  const pct = (v: number) => `${Math.min(100, (v / Math.max(1, target)) * 100)}%`
   return (
     <div>
       <div className="flex justify-between items-baseline mb-1.5">
         <span className="text-[13px] opacity-60">{label}</span>
         <span className="text-[14px] font-bold">{r0(value)}<span className="opacity-50 font-medium"> / {target} g</span></span>
       </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(15,61,46,.07)' }}>
-        <div className="bar h-full rounded-full" style={{ width: `${Math.min(100, (value / Math.max(1, target)) * 100)}%`, background: gradient }} />
+      <div className="relative h-2 rounded-full overflow-hidden" style={{ background: 'rgba(15,61,46,.07)' }}>
+        {planned !== undefined && planned > value && (
+          <div className="bar absolute inset-y-0 left-0 rounded-full opacity-30" style={{ width: pct(planned), background: gradient }} />
+        )}
+        <div className="bar relative h-full rounded-full" style={{ width: pct(value), background: gradient }} />
       </div>
     </div>
   )

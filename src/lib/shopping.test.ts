@@ -44,12 +44,23 @@ describe('buildShoppingList', () => {
     expect(lines).toHaveLength(0)
   })
 
-  it('subtracts what you already have', () => {
-    const shop = { ...emptyShop(), have: { egg: 5 } }
-    const lines = buildShoppingList(data({ '2026-11-20': [entry('O', [{ ing: 'egg', qty: 6 }])] }, shop), days)
-    expect(lines[0].buy).toBe(1)
-    const none = buildShoppingList(data({ '2026-11-20': [entry('O', [{ ing: 'egg', qty: 6 }])] }, { ...emptyShop(), have: { egg: 6 } }), days)
-    expect(none).toHaveLength(0)
+  const withStock = (id: string, stock: number, extra = {}) => SEED_INGREDIENTS.map((g) => (g.id === id ? { ...g, stock, ...extra } : g))
+
+  it('subtracts what is in stock', () => {
+    const plan = { '2026-11-20': [entry('O', [{ ing: 'egg', qty: 6 }])] }
+    expect(buildShoppingList(data(plan, emptyShop(), withStock('egg', 5)), days)[0].buy).toBe(1)
+    expect(buildShoppingList(data(plan, emptyShop(), withStock('egg', 6)), days)).toHaveLength(0)
+  })
+
+  it('skips meals already eaten', () => {
+    const plan = { '2026-11-20': [{ ...entry('O', [{ ing: 'egg', qty: 6 }]), eaten: true }] }
+    expect(buildShoppingList(data(plan), days)).toHaveLength(0)
+  })
+
+  it('adds items that dropped below their warning level', () => {
+    const lines = buildShoppingList(data({}, emptyShop(), withStock('egg', 4, { lowAt: 6 })), days)
+    expect(lines[0].ing.id).toBe('egg')
+    expect(lines[0].buy).toBe(12)
   })
 
   it('adds running-low items even when nothing is planned', () => {
@@ -93,5 +104,18 @@ describe('migrate v1 → v2', () => {
     expect(v2.plan['2026-11-19'][0].base[0].cooked).toBe(true)
     const after = totals(v2.meals[0].items, v2.ings)
     expect(Math.abs(after.kcal - before.kcal) / before.kcal).toBeLessThan(0.1)
+  })
+})
+
+describe('canMake', () => {
+  it('counts portions from stock and lists what is short', async () => {
+    const { canMake } = await import('./nutrition')
+    const ings = SEED_INGREDIENTS.map((g) => (g.id === 'egg' ? { ...g, stock: 7 } : g.id === 'cheese' ? { ...g, stock: 10 } : g))
+    const omelette = [{ ing: 'egg', qty: 3 }, { ing: 'cheese', qty: 3 }]
+    expect(canMake(omelette, ings).times).toBe(2)
+    const bowl = [{ ing: 'chicken', qty: 150, cooked: true }]
+    const r = canMake(bowl, ings)
+    expect(r.times).toBe(0)
+    expect(r.short[0].missing).toBeCloseTo(200)
   })
 })

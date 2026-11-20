@@ -10,7 +10,7 @@ import { useUI, type IngDraft } from '../lib/ui'
 export const emptyMicrosDraft = (): IngDraft['micros'] => ({})
 
 export const blankIngDraft = (ctx: IngDraft['ctx'], name = '', cat: Category = 'other'): IngDraft => ({
-  ctx, name, unit: 'piece', cat, kcal: '', p: '', c: '', f: '', micros: emptyMicrosDraft(), amount: 1, yieldPct: '', pack: '', low: false,
+  ctx, name, unit: 'piece', cat, kcal: '', p: '', c: '', f: '', micros: emptyMicrosDraft(), amount: 1, yieldPct: '', pack: '', low: false, stock: '', lowAt: '',
 })
 
 export const draftFromIngredient = (g: Ingredient): IngDraft => ({
@@ -21,6 +21,8 @@ export const draftFromIngredient = (g: Ingredient): IngDraft => ({
   yieldPct: g.yield ? String(Math.round(g.yield * 100)) : '',
   pack: g.pack ? String(g.pack) : '',
   low: !!g.low,
+  stock: g.stock ? String(Math.round(g.stock * 10) / 10) : '',
+  lowAt: g.lowAt !== undefined ? String(g.lowAt) : '',
 })
 
 const num = (s: string | undefined) => {
@@ -93,6 +95,8 @@ export default function IngForm() {
       yield: d.unit !== 'piece' && num(d.yieldPct) > 0 ? num(d.yieldPct) / 100 : undefined,
       pack: num(d.pack) > 0 ? num(d.pack) : undefined,
       low: d.low || undefined,
+      stock: num(d.stock) > 0 ? num(d.stock) : undefined,
+      lowAt: d.lowAt.trim() !== '' && num(d.lowAt) > 0 ? num(d.lowAt) : undefined,
     }
     const id = saveIngredient(vals, d.editId)
     if (inMeal && draft) {
@@ -221,6 +225,17 @@ export default function IngForm() {
             </div>
           </section>
         )}
+
+        <section>
+          <Label>Stock <span className="font-medium opacity-70">· what you have at home</span></Label>
+          <div className="card p-4 mt-2 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <NumField id="ing-stock" label="In stock now" unit={d.unit === 'piece' ? 'pcs' : d.unit === '100ml' ? 'ml' : 'g'} value={d.stock} onChange={(v) => update({ stock: v })} />
+              <NumField id="ing-lowat" label="Warn me below" unit={d.unit === 'piece' ? 'pcs' : d.unit === '100ml' ? 'ml' : 'g'} value={d.lowAt} onChange={(v) => update({ lowAt: v })} />
+            </div>
+            <p className="text-[12px] opacity-60">Stock goes down when you tick a meal as eaten, and up when you finish shopping. Below the warning level it goes on the shopping list.</p>
+          </div>
+        </section>
 
         <section>
           <Label>Shopping <span className="font-medium opacity-70">· optional</span></Label>

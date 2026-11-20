@@ -2,6 +2,7 @@ import { del, get, set } from 'idb-keyval'
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
+import { rawUse } from './nutrition'
 import { emptyShop, freshData, SEED_INGREDIENTS } from './seed'
 import type { Data, Entry, Ingredient, Item, Meal, MealType, ShopState, Targets } from './types'
 
@@ -9,6 +10,14 @@ const idbStorage: StateStorage = {
   getItem: async (name) => (await get<string>(name)) ?? null,
   setItem: async (name, value) => set(name, value),
   removeItem: async (name) => del(name),
+}
+
+/** Add (sign 1) or take back (sign -1) the raw amounts of items to/from stock. Never below zero. */
+function moveStock(s: Data, items: Item[], sign: 1 | -1) {
+  for (const [id, amount] of rawUse(items, s.ings)) {
+    const g = s.ings.find((x) => x.id === id)
+    if (g) g.stock = Math.max(0, (g.stock ?? 0) + sign * amount)
+  }
 }
 
 export const uid = () => (crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10))
@@ -32,11 +41,15 @@ interface Actions {
   setShop: (p: Partial<Pick<ShopState, 'startOffset' | 'days'>>) => void
   tick: (id: string, amount: number | null) => void
   setHave: (id: string, amount: number) => void
+  setStock: (id: string, amount: number) => void
+  addStock: (amounts: Record<string, number>) => void
+  /** Tick a meal as eaten (takes it off stock) or untick it (puts it back). */
+  setEaten: (day: string, id: string, eaten: boolean) => void
   addExtra: (name: string) => void
   toggleExtra: (id: string) => void
   removeExtra: (id: string) => void
-  /** Clear ticks and "have" amounts, drop bought extras, and un-flag running-low items that were bought. */
-  finishShopping: (boughtIds: string[]) => void
+  /** Add bought amounts to stock, clear ticks, drop bought extras, and un-flag running-low items that were bought. */
+  finishShopping: (bought: Record<string, number>) => void
 }
 
 export type Store = Data & Actions
@@ -56,11 +69,37 @@ export const useData = create<Store>()(
       setEntryItems: (day, id, items) =>
         setState((s) => {
           const e = s.plan[day]?.find((x) => x.id === id)
-          if (e) e.items = items
+          if (!e) return
+          if (e.eaten) {
+            moveStock(s, e.items, 1)
+            moveStock(s, items, -1)
+          }
+          e.items = items
         }),
       removeEntry: (day, id) =>
         setState((s) => {
+          const e = s.plan[day]?.find((x) => x.id === id)
+          if (e?.eaten) moveStock(s, e.items, 1)
           s.plan[day] = (s.plan[day] ?? []).filter((x) => x.id !== id)
+        }),
+      setEaten: (day, id, eaten) =>
+        setState((s) => {
+          const e = s.plan[day]?.find((x) => x.id === id)
+          if (!e || !!e.eaten === eaten) return
+          moveStock(s, e.items, eaten ? -1 : 1)
+          e.eaten = eaten || undefined
+        }),
+      setStock: (id, amount) =>
+        setState((s) => {
+          const g = s.ings.find((x) => x.id === id)
+          if (g) g.stock = Math.max(0, amount)
+        }),
+      addStock: (amounts) =>
+        setState((s) => {
+          for (const [id, a] of Object.entries(amounts)) {
+            const g = s.ings.find((x) => x.id === id)
+            if (g && a > 0) g.stock = (g.stock ?? 0) + a
+          }
         }),
       commitEntry: (day, id, updateMeal) =>
         setState((s) => {
@@ -79,6 +118,10 @@ export const useData = create<Store>()(
         setState((s) => {
           const e = s.plan[day]?.find((x) => x.id === id)
           if (!e) return
+          if (e.eaten) {
+            moveStock(s, e.items, 1)
+            moveStock(s, meal.items, -1)
+          }
           e.mealId = meal.id
           e.name = meal.name
           e.items = structuredClone(meal.items)
@@ -164,11 +207,13 @@ export const useData = create<Store>()(
         setState((s) => {
           s.shop.extras = s.shop.extras.filter((e) => e.id !== id)
         }),
-      finishShopping: (boughtIds) =>
+      finishShopping: (bought) =>
         setState((s) => {
-          for (const id of boughtIds) {
+          for (const [id, amount] of Object.entries(bought)) {
             const g = s.ings.find((x) => x.id === id)
-            if (g) g.low = false
+            if (!g) continue
+            g.low = false
+            g.stock = (g.stock ?? 0) + amount
           }
           s.shop.checked = {}
           s.shop.have = {}

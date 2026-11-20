@@ -1,5 +1,5 @@
 import { addDays } from './dates'
-import { rawQty } from './nutrition'
+import { isLow, rawQty } from './nutrition'
 import type { Data, Ingredient } from './types'
 
 export interface ShopSource {
@@ -10,9 +10,9 @@ export interface ShopSource {
 
 export interface ShopLine {
   ing: Ingredient
-  /** Raw amount the planned meals use. */
+  /** Raw amount the planned (not yet eaten) meals use. */
   need: number
-  /** Raw amount already at home. */
+  /** Raw amount in stock at home. */
   have: number
   /** What to buy: need minus have, never below zero. Running-low items with no plan need 1 pack/unit. */
   buy: number
@@ -36,6 +36,8 @@ export function buildShoppingList(data: Pick<Data, 'ings' | 'plan' | 'shop'>, da
 
   for (const day of days) {
     for (const e of data.plan[day] ?? []) {
+      // Eaten meals were already taken off stock.
+      if (e.eaten) continue
       for (const it of e.items) {
         const g = byId.get(it.ing)
         if (!g || it.qty <= 0) continue
@@ -47,21 +49,22 @@ export function buildShoppingList(data: Pick<Data, 'ings' | 'plan' | 'shop'>, da
       }
     }
   }
-  for (const g of data.ings) if (g.low && !acc.has(g.id)) acc.set(g.id, { need: 0, sources: [] })
+  for (const g of data.ings) if (isLow(g) && !acc.has(g.id)) acc.set(g.id, { need: 0, sources: [] })
 
   const lines: ShopLine[] = []
   for (const [id, { need, sources }] of acc) {
     const g = byId.get(id)!
-    const have = data.shop.have[id] ?? 0
+    const have = g.stock ?? 0
+    const low = isLow(g)
     let buy = Math.max(0, need - have)
-    // Running low with nothing planned: buy one pack (or one unit / 100 g).
-    if (g.low && need === 0) buy = g.pack ?? (g.unit === 'piece' ? 1 : 100)
-    if (buy <= 0 && !g.low) continue
+    // Running low and nothing else to buy: get one pack (or one unit / 100 g).
+    if (low && buy === 0) buy = g.pack ?? (g.unit === 'piece' ? 1 : 100)
+    if (buy <= 0) continue
     const packs = g.pack ? Math.ceil(buy / g.pack - 1e-9) : undefined
     const checkedAt = data.shop.checked[id]
     const done = checkedAt !== undefined && checkedAt + 1e-9 >= buy
     const more = checkedAt !== undefined && !done ? buy - checkedAt : 0
-    lines.push({ ing: g, need, have, buy, packs, sources, low: !!g.low, done, more })
+    lines.push({ ing: g, need, have, buy, packs, sources, low, done, more })
   }
   return lines.sort((a, b) => a.ing.name.localeCompare(b.ing.name))
 }

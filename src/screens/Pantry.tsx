@@ -1,8 +1,8 @@
-import { Plus, Search, Star } from 'lucide-react'
+import { PackagePlus, Plus, Search, Star } from 'lucide-react'
 import { useState } from 'react'
 import { CAT_ICON, CatBadge, MacroChips, Nav, Page } from '../components/ui'
 import { CATS } from '../lib/constants'
-import { perText, r0 } from '../lib/nutrition'
+import { amountText, isLow, perText, r0 } from '../lib/nutrition'
 import { usedIn, useData } from '../lib/store'
 import type { Category, Ingredient } from '../lib/types'
 import { useUI } from '../lib/ui'
@@ -49,9 +49,14 @@ export default function Pantry() {
         <p className="text-[14px] opacity-60 mt-0.5">{ings.length} ingredients · build your meals from these</p>
       </header>
       <main className="px-4 space-y-4">
-        <button type="button" className="tap w-full h-14 rounded-[20px] btn-warm text-[17px] font-semibold flex items-center justify-center gap-3" onClick={addNew}>
-          <span className="w-8 h-8 rounded-full btn-dark flex items-center justify-center"><Plus size={18} /></span>Add ingredient
-        </button>
+        <div className="flex gap-2">
+          <button type="button" className="tap flex-1 h-14 rounded-[20px] btn-warm text-[16px] font-semibold flex items-center justify-center gap-2" onClick={() => go('restock')}>
+            <PackagePlus size={20} />I bought…
+          </button>
+          <button type="button" className="tap flex-1 h-14 rounded-[20px] soft text-[15px] font-semibold flex items-center justify-center gap-2" onClick={addNew}>
+            <Plus size={18} />New ingredient
+          </button>
+        </div>
         <label className="field h-12 px-4 rounded-[16px] soft border-2 flex items-center gap-2">
           <Search size={18} className="opacity-40" /><span className="sr-only">Search pantry</span>
           <input id="pantry-search" className="w-full text-[15px]" placeholder="Search pantry" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -83,8 +88,8 @@ export default function Pantry() {
                     <button type="button" className="tap flex-1 min-w-0 flex items-center gap-3 pl-3.5 py-3 text-left" onClick={() => edit(g)}>
                       <CatBadge cat={g.cat} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[15px] font-bold truncate flex items-center gap-1.5">{g.name}{g.low && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-peach text-[#B5561F] shrink-0">LOW</span>}</div>
-                        <div className="text-[12px] opacity-60 mt-0.5">{r0(g.kcal)} kcal / {perText(g.unit)}{n ? ` · in ${n} ${n === 1 ? 'meal' : 'meals'}` : ''}</div>
+                        <div className="text-[15px] font-bold truncate flex items-center gap-1.5">{g.name}{isLow(g) && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-peach text-[#B5561F] shrink-0">LOW</span>}</div>
+                        <div className="text-[12px] mt-0.5"><span className={g.stock ? 'font-bold text-forest-700' : 'opacity-50'}>{g.stock ? `${amountText(g.unit, g.stock)} in stock` : 'None in stock'}</span><span className="opacity-60"> · {r0(g.kcal)} kcal / {perText(g.unit)}{n ? ` · in ${n} ${n === 1 ? 'meal' : 'meals'}` : ''}</span></div>
                         <div className="mt-1.5"><MacroChips t={g} small decimals /></div>
                       </div>
                     </button>
@@ -101,7 +106,7 @@ export default function Pantry() {
         {!visible.length && (
           <p className="text-center opacity-60 py-8">{query ? 'No match. Add it as a new ingredient above.' : filter === 'fav' ? 'No favourites yet. Tap the star on an ingredient.' : 'Nothing in this category yet.'}</p>
         )}
-        <p className="text-center text-[13px] opacity-50 pt-1">Tap an ingredient to edit it. Tap ☆ to pin it to the top when building meals.</p>
+        <p className="text-center text-[13px] opacity-50 pt-1">Tap an ingredient to edit it or correct its stock. Tap ☆ to pin it to the top when building meals.</p>
       </main>
       <Nav />
     </Page>

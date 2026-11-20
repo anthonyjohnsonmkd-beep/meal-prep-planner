@@ -4,13 +4,15 @@ A phone-first app for planning, prepping and logging meals with calories, macros
 
 ## What it does
 
-- **Today**: calorie ring, protein / carbs / fat against your targets, micronutrients, and today's meals. Starts at 0 each day.
+- **Today**: what you've eaten against your targets (calories, protein / carbs / fat, micronutrients), with planned meals shown lighter. Tick a meal ✓ when eaten. Starts at 0 each day.
 - **Add a meal**: pick Breakfast, Lunch, Dinner or Snacks, then a saved meal or create a new one. Adjust amounts for this time only, and add it to several days at once for meal prep.
 - **Saved meals**: built from ingredients, so totals are always calculated. Duplicate a meal to make a variation.
 - **Edit a logged meal**: change amounts for that day only, reset to the saved recipe, update the saved recipe, or save the day's version as a new meal.
 - **Pantry**: your ingredient list by category, with favourites. Nutrition is entered raw, as on the package, per piece, per 100 g or per 100 ml. Calories are checked against the macros to catch label typos. Optional cooked weight (100 g raw → 75 g cooked), pack size, and a "running low" flag.
 - **Raw or cooked**: in a meal, each weighed ingredient can be marked as weighed raw or cooked. Cooked amounts are converted back to raw for nutrition and shopping.
-- **Shop**: a shopping list built from the planned meals for the days you shop for (today or tomorrow, 3–14 days). Raw amounts, added up and grouped by aisle, in packs where a pack size is set. Tick items off, mark what you already have, add other things, share the list, and finish shopping to reset it.
+- **Stock**: each ingredient tracks how much you have at home. Log groceries with **Pantry → I bought…** (one tap adds a pack) or by finishing a shopping trip. Ticking a meal as eaten takes its raw amounts off stock; unticking puts them back. Optional "warn me below" level puts it on the shopping list.
+- **What can I make?**: saved meals show how many portions your stock covers, or what's short.
+- **Shop**: a shopping list built from the planned meals for the days you shop for (today or tomorrow, 3–14 days). Raw amounts, added up and grouped by aisle, in packs where a pack size is set. Stock is taken off what to buy. Tick items off, add other things, share the list, and finish shopping to add what you bought to stock.
 - **Week**: daily calories against your target and which meals are planned.
 - **Goals**: daily targets, plus backup and restore of all data as a JSON file.
 

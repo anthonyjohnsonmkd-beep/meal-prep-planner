@@ -90,3 +90,40 @@ export function shopAmount(unit: Unit, raw: number) {
   }
   return `${v} ${small}`
 }
+
+/** Stock or amount for display: "18", "750 g", "1.2 kg", "1.5 L". */
+export function amountText(unit: Unit, v: number) {
+  if (unit === 'piece') return r1(v)
+  const big = unit === '100ml' ? 'L' : 'kg'
+  const small = unit === '100ml' ? 'ml' : 'g'
+  if (v >= 1000) return `${r1(v / 1000)} ${big}`
+  return `${Math.round(v)} ${small}`
+}
+
+/** Raw amount of each ingredient a list of items uses. */
+export function rawUse(items: Item[], ings: Ingredient[]) {
+  const byId = new Map(ings.map((g) => [g.id, g]))
+  const use = new Map<string, number>()
+  for (const it of items) {
+    const g = byId.get(it.ing)
+    if (!g || it.qty <= 0) continue
+    use.set(g.id, (use.get(g.id) ?? 0) + rawQty(g, it))
+  }
+  return use
+}
+
+/** How many times a meal can be made from stock, and what's missing for one portion. */
+export function canMake(items: Item[], ings: Ingredient[]) {
+  const byId = new Map(ings.map((g) => [g.id, g]))
+  let times = Infinity
+  const short: { ing: Ingredient; missing: number }[] = []
+  for (const [id, need] of rawUse(items, ings)) {
+    const g = byId.get(id)!
+    const have = g.stock ?? 0
+    times = Math.min(times, Math.floor(have / need + 1e-9))
+    if (have + 1e-9 < need) short.push({ ing: g, missing: need - have })
+  }
+  return { times: times === Infinity ? 0 : times, short }
+}
+
+export const isLow = (g: Pick<Ingredient, 'low' | 'lowAt' | 'stock'>) => !!g.low || (g.lowAt !== undefined && (g.stock ?? 0) < g.lowAt)

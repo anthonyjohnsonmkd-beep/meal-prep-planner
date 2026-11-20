@@ -13,7 +13,7 @@ export default function EntryEdit() {
   const plan = useData((s) => s.plan)
   const ings = useData((s) => s.ings)
   const meals = useData((s) => s.meals)
-  const { setEntryItems, removeEntry, commitEntry } = useData.getState()
+  const { setEntryItems, removeEntry, commitEntry, setEaten } = useData.getState()
   const [microsOpen, setMicrosOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   if (!edit) return null
@@ -148,6 +148,17 @@ export default function EntryEdit() {
       </main>
 
       <Footer>
+        <div className="flex items-center justify-between px-1 pb-1">
+          <div>
+            <div className="text-[14px] font-semibold">Eaten</div>
+            <div className="text-[12px] opacity-60">{e.eaten ? 'Taken off your stock' : 'Tick when eaten to take it off your stock'}</div>
+          </div>
+          <button type="button" role="switch" aria-checked={!!e.eaten} aria-label="Eaten"
+            className={`tap w-12 h-7 rounded-full relative shrink-0 ${e.eaten ? 'bg-forest-700' : 'tint border border-forest-900/10'}`}
+            onClick={() => setEaten(edit.day, e.id, !e.eaten)}>
+            <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all" style={{ left: e.eaten ? 22 : 2 }} />
+          </button>
+        </div>
         {meal && edited && (
           <div className="flex items-center justify-between px-1 pb-1">
             <span className="text-[14px] font-semibold">Also update my saved meal</span>

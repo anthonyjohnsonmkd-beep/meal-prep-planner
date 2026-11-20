@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { CatBadge, Nav, Page, Primary } from '../components/ui'
 import { CATS } from '../lib/constants'
 import { DOW, fromKey, shortDate, todayKey } from '../lib/dates'
-import { shopAmount } from '../lib/nutrition'
+import { amountText, shopAmount } from '../lib/nutrition'
 import { buildShoppingList, listAsText, shopDays, type ShopLine } from '../lib/shopping'
 import { useData } from '../lib/store'
 import { useUI } from '../lib/ui'
@@ -26,7 +26,7 @@ export function useShoppingList() {
 }
 
 export default function Shop() {
-  const { set, say } = useUI()
+  const { set, go, say } = useUI()
   const { days, lines, shop, plan } = useShoppingList()
   const { setShop, tick, addExtra, toggleExtra, removeExtra, finishShopping } = useData.getState()
   const [extra, setExtra] = useState('')
@@ -54,9 +54,9 @@ export default function Shop() {
 
   const finish = () => {
     if (!doneCount) return say('Tick off what you bought first')
-    if (!window.confirm('Finish shopping? Ticks are cleared and bought "running low" items are taken off.')) return
-    finishShopping(basket.map((l) => l.ing.id))
-    say('Shopping done. Nice work')
+    if (!window.confirm('Finish shopping? What you ticked is added to your stock and the list is cleared.')) return
+    finishShopping(Object.fromEntries(basket.map((l) => [l.ing.id, l.packs && l.ing.pack ? l.packs * l.ing.pack : l.buy])))
+    say('Shopping done. Your stock is updated')
   }
 
   const addExtraItem = () => {
@@ -85,7 +85,7 @@ export default function Shop() {
             {l.more > 0 && <span className="font-bold text-[#B5561F]">+{shopAmount(l.ing.unit, l.more)} more needed</span>}
             {l.low && <span className="font-bold text-[#B5561F]">Running low</span>}
             {l.sources.length > 0 && <span className="opacity-55">{l.sources.length} {l.sources.length === 1 ? 'meal' : 'meals'}</span>}
-            {l.have > 0 && <span className="opacity-55">have {shopAmount(l.ing.unit, l.have)}</span>}
+            {l.have > 0 && <span className="opacity-55">{amountText(l.ing.unit, l.have)} in stock</span>}
           </div>
         </div>
         <div className={`text-[16px] font-semibold text-right shrink-0 ${l.done ? 'opacity-40' : ''}`}>{lineAmount(l)}</div>
@@ -137,7 +137,10 @@ export default function Shop() {
           <div className="rounded-[22px] border-2 border-dashed border-mint-300 p-6 text-center">
             <div className="w-12 h-12 rounded-[16px] btn-warm flex items-center justify-center mx-auto mb-3"><ShoppingBasket size={24} /></div>
             <div className="text-[16px] font-bold">Nothing to buy yet</div>
-            <div className="text-[14px] opacity-60 mt-1">Plan meals for these days and their ingredients appear here, already added up.</div>
+            <div className="text-[14px] opacity-60 mt-1">Plan meals for these days and whatever your stock doesn't cover appears here, already added up.</div>
+            <button type="button" className="tap mt-4 h-11 px-5 rounded-full soft text-[14px] font-bold inline-flex items-center gap-2" onClick={() => go('restock')}>
+              <Plus size={16} />Bought without a list? Add to stock
+            </button>
           </div>
         )}
 

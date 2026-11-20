@@ -3,7 +3,7 @@ import { todayKey } from './dates'
 import type { Category, Item, MealType, MicroKey, Unit } from './types'
 
 export type Tab = 'home' | 'week' | 'library' | 'pantry' | 'shop'
-export type ScreenName = Tab | 'goals' | 'libraryAdd' | 'builder' | 'picker' | 'ingForm' | 'entry'
+export type ScreenName = Tab | 'goals' | 'libraryAdd' | 'builder' | 'picker' | 'ingForm' | 'entry' | 'restock'
 
 export interface MealDraft {
   id: string | null
@@ -30,6 +30,8 @@ export interface IngDraft {
   yieldPct: string
   pack: string
   low: boolean
+  stock: string
+  lowAt: string
 }
 
 export type Sheet =

@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from 'react'
 import { CatBadge, MacroChips, Primary, Stepper, TYPE_ICON, TypeBadge } from '../components/ui'
 import { TYPES, typeInfo } from '../lib/constants'
 import { DOW, dayName, fromKey, shortDate, todayKey, weekOf } from '../lib/dates'
-import { qtyLong, qtyShort, r0, sameItems, shopAmount, signed, stepOf, totals } from '../lib/nutrition'
+import { amountText, qtyLong, qtyShort, r0, sameItems, shopAmount, signed, stepOf, totals } from '../lib/nutrition'
 import { draftFromIngredient } from './IngForm'
 import { lineAmount, useShoppingList } from './Shop'
 import { useData } from '../lib/store'
@@ -164,15 +164,14 @@ export function ShopItemSheet() {
   const { sheet, set, go } = useUI()
   const { lines } = useShoppingList()
   const ings = useData((s) => s.ings)
-  const have = useData((s) => s.shop.have)
-  const { setHave, toggleLow, tick } = useData.getState()
+  const { setStock, toggleLow, tick } = useData.getState()
   if (sheet?.kind !== 'shopItem') return null
   const g = ings.find((x) => x.id === sheet.ing)
   if (!g) return null
   const l = lines.find((x) => x.ing.id === g.id)
   const close = () => set({ sheet: null })
   const step = g.unit === 'piece' ? 1 : g.pack && g.pack >= 100 ? 50 : 10
-  const h = have[g.id] ?? 0
+  const h = g.stock ?? 0
   const byDay = new Map<string, { meal: string; raw: number }[]>()
   for (const s2 of l?.sources ?? []) byDay.set(s2.day, [...(byDay.get(s2.day) ?? []), { meal: s2.meal, raw: s2.raw }])
 
@@ -190,7 +189,7 @@ export function ShopItemSheet() {
         <div className="card p-4 mb-3">
           <div className="flex justify-between items-baseline mb-2">
             <h3 className="text-[14px] font-bold">Planned meals need</h3>
-            <span className="text-[16px] font-semibold">{shopAmount(g.unit, l.need)}{g.unit !== 'piece' ? ' raw' : ''}</span>
+            <span className="text-[16px] font-semibold">{amountText(g.unit, l.need)}{g.unit !== 'piece' ? ' raw' : ''}</span>
           </div>
           <div className="space-y-1.5">
             {[...byDay].map(([day, ms]) => (
@@ -207,10 +206,10 @@ export function ShopItemSheet() {
       <div className="card p-4 mb-3 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-[15px] font-bold">Already have</div>
-            <div className="text-[12px] opacity-60">Taken off what you need to buy</div>
+            <div className="text-[15px] font-bold">In stock</div>
+            <div className="text-[12px] opacity-60">At home now. Taken off what you need to buy</div>
           </div>
-          <Stepper label="already have" value={shopAmount(g.unit, h)} onChange={(d) => setHave(g.id, Math.max(0, h + d * step))} />
+          <Stepper label="in stock" value={amountText(g.unit, h)} onChange={(d) => setStock(g.id, Math.max(0, Math.round((h + d * step) / step) * step))} />
         </div>
         <div className="flex items-center justify-between gap-3">
           <div>

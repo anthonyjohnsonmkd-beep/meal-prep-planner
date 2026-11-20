@@ -12,6 +12,7 @@ import Library from './screens/Library'
 import Pantry from './screens/Pantry'
 import Picker from './screens/Picker'
 import { ConfirmSheet, ShopItemSheet, TypeSheet } from './screens/Sheets'
+import Restock from './screens/Restock'
 import Shop from './screens/Shop'
 import Week from './screens/Week'
 
@@ -57,6 +58,7 @@ export default function App() {
     libraryAdd: <Library adding />,
     pantry: <Pantry />,
     shop: <Shop />,
+    restock: <Restock />,
     goals: <Goals />,
     builder: <Builder />,
     picker: <Picker />,

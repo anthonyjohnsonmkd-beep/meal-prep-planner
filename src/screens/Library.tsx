@@ -1,8 +1,9 @@
-import { ChevronRight, Copy, Plus } from 'lucide-react'
+import { ChevronRight, Copy, Plus, Refrigerator } from 'lucide-react'
+import { useState } from 'react'
 import { BackButton, MacroChips, Nav, Page, TYPE_ICON } from '../components/ui'
 import { TYPES, typeInfo } from '../lib/constants'
 import { dayName, todayKey } from '../lib/dates'
-import { r0, totals, unitSuffix } from '../lib/nutrition'
+import { amountText, canMake, r0, totals, unitSuffix } from '../lib/nutrition'
 import { useData } from '../lib/store'
 import { useUI } from '../lib/ui'
 
@@ -12,7 +13,9 @@ export default function Library({ adding }: { adding: boolean }) {
   const ings = useData((s) => s.ings)
   const ty = typeInfo(libType)
   const Icon = TYPE_ICON[libType]
-  const list = meals.filter((m) => m.type === libType)
+  const [onlyCanMake, setOnlyCanMake] = useState(false)
+  const all = meals.filter((m) => m.type === libType)
+  const list = onlyCanMake ? all.filter((m) => canMake(m.items, ings).times > 0) : all
   const dark = ty.fg === '#FFFFFF'
   const glassOn = dark ? 'rgba(255,255,255,.18)' : 'rgba(15,61,46,.08)'
   const today = todayKey()
@@ -50,7 +53,7 @@ export default function Library({ adding }: { adding: boolean }) {
             <div className="w-14 h-14 rounded-[18px] flex items-center justify-center" style={{ background: glassOn }}><Icon size={28} strokeWidth={1.8} /></div>
             <div>
               <h1 className="text-[30px] font-normal tracking-tight leading-tight">{ty.label}</h1>
-              <p className="text-[14px] font-semibold opacity-75">{list.length} saved {list.length === 1 ? 'meal' : 'meals'}</p>
+              <p className="text-[14px] font-semibold opacity-75">{all.length} saved {all.length === 1 ? 'meal' : 'meals'}</p>
             </div>
           </div>
           {!adding && (
@@ -69,6 +72,10 @@ export default function Library({ adding }: { adding: boolean }) {
 
       <Page>
         <main className="px-4 pt-4 space-y-3">
+          <button type="button" aria-pressed={onlyCanMake} onClick={() => setOnlyCanMake((v) => !v)}
+            className={`tap h-10 px-4 rounded-full text-[13px] font-bold inline-flex items-center gap-2 ${onlyCanMake ? 'btn-dark' : 'soft'}`}>
+            <Refrigerator size={16} />What can I make?{onlyCanMake ? ` · ${list.length}` : ''}
+          </button>
           <button type="button" className="tap w-full rounded-[22px] border-2 border-dashed border-forest-700/40 bg-white/60 p-4 flex items-center gap-3 text-left" onClick={newMeal}>
             <div className="w-12 h-12 rounded-[16px] btn-dark flex items-center justify-center shrink-0"><Plus size={24} /></div>
             <div className="flex-1">
@@ -91,6 +98,13 @@ export default function Library({ adding }: { adding: boolean }) {
                     <div className="flex-1 min-w-0">
                       <div className="text-[16px] font-bold">{m.name}</div>
                       <div className="text-[13px] opacity-60 mt-0.5 line-clamp-1">{summary}</div>
+                      {(() => {
+                        const cm = canMake(m.items, ings)
+                        if (cm.times > 0) return <div className="mt-1.5 inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(22,101,52,.12)', color: '#166534' }}>Can make ×{cm.times} from stock</div>
+                        const first = cm.short[0]
+                        if (!first) return null
+                        return <div className="mt-1.5 text-[11px] font-semibold text-[#B5561F]">Short {amountText(first.ing.unit, first.missing)} {first.ing.name}{cm.short.length > 1 ? ` +${cm.short.length - 1} more` : ''}</div>
+                      })()}
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-[24px] font-normal leading-none">{r0(t.kcal)}</div>
@@ -114,7 +128,11 @@ export default function Library({ adding }: { adding: boolean }) {
               </div>
             )
           })}
-          {!list.length && <p className="text-center text-[14px] opacity-60 py-6">No saved {ty.label.toLowerCase()} yet. Create your first one above.</p>}
+          {!list.length && (
+            <p className="text-center text-[14px] opacity-60 py-6">
+              {onlyCanMake && all.length ? `Your stock doesn't cover any saved ${ty.label.toLowerCase()} yet. Add what you bought in Pantry → I bought…` : `No saved ${ty.label.toLowerCase()} yet. Create your first one above.`}
+            </p>
+          )}
         </main>
       </Page>
       {!adding && <Nav />}

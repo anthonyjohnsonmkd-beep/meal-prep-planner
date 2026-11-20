@@ -4,7 +4,7 @@ import { BackButton, CookToggle, Footer, IconButton, Label, Page, Primary, Stepp
 import { draftFromIngredient } from './IngForm'
 import { TYPES, typeInfo } from '../lib/constants'
 import { dayName, todayKey } from '../lib/dates'
-import { canCook, qtyShort, r0, r1, stepOf, totals } from '../lib/nutrition'
+import { amountText, canCook, qtyShort, r0, r1, rawQty, stepOf, totals } from '../lib/nutrition'
 import { useData } from '../lib/store'
 import { useUI } from '../lib/ui'
 
@@ -125,6 +125,9 @@ export default function Builder() {
                   <div className="flex-1 min-w-0">
                     <div className="text-[15px] font-bold truncate">{g.name}</div>
                     <div className="text-[12px] opacity-60">{r0(x.kcal)} kcal · P {r1(x.p)} · C {r1(x.c)} · F {r1(x.f)}</div>
+                    <div className={`text-[11px] font-semibold ${!g.stock ? 'opacity-40' : rawQty(g, it) > g.stock ? 'text-[#B5561F]' : 'text-forest-700'}`}>
+                      {g.stock ? `${amountText(g.unit, g.stock)} in stock${rawQty(g, it) > g.stock ? ' · not enough' : ''}` : 'None in stock'}
+                    </div>
                     {canCook(g) && (
                       <CookToggle cooked={!!it.cooked} onChange={(cooked) => {
                         if (cooked && !g.yield) {

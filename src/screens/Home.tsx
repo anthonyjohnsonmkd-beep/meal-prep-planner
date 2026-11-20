@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Plus, Sparkles, Target, Utensils } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Plus, Sparkles, Target, Utensils } from 'lucide-react'
 import { useState } from 'react'
 import { GRAD, IconButton, MacroBar, MacroChips, MicroGrid, Nav, Page, TypeBadge } from '../components/ui'
 import { TYPES } from '../lib/constants'
@@ -7,9 +7,10 @@ import { r0, sameItems, totals } from '../lib/nutrition'
 import { useData } from '../lib/store'
 import { useUI } from '../lib/ui'
 
-function Ring({ value, target }: { value: number; target: number }) {
+function Ring({ value, planned, target }: { value: number; planned: number; target: number }) {
   const C = 2 * Math.PI * 52
   const pct = Math.min(1, value / Math.max(1, target))
+  const plannedPct = Math.min(1, planned / Math.max(1, target))
   const over = value > target
   return (
     <div className="relative w-[132px] h-[132px] shrink-0">
@@ -20,6 +21,10 @@ function Ring({ value, target }: { value: number; target: number }) {
           </linearGradient>
         </defs>
         <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(15,61,46,.07)" strokeWidth="10" />
+        {planned > value && (
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#A8D5BA" strokeOpacity=".55" strokeWidth="10" strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={C * (1 - plannedPct)} style={{ transition: 'stroke-dashoffset .6s cubic-bezier(.2,.8,.2,1)' }} />
+        )}
         {value > 0 && (
           <circle cx="60" cy="60" r="52" fill="none" stroke={over ? '#E76F51' : 'url(#ring)'} strokeWidth="10" strokeLinecap="round"
             strokeDasharray={C} strokeDashoffset={C * (1 - pct)} style={{ transition: 'stroke-dashoffset .6s cubic-bezier(.2,.8,.2,1)' }} />
@@ -34,14 +39,18 @@ function Ring({ value, target }: { value: number; target: number }) {
 }
 
 export default function Home() {
-  const { day, set, go } = useUI()
+  const { day, set, go, say } = useUI()
   const plan = useData((s) => s.plan)
   const ings = useData((s) => s.ings)
   const targets = useData((s) => s.targets)
   const [microsOpen, setMicrosOpen] = useState(false)
   const today = todayKey()
   const entries = plan[day] ?? []
-  const t = totals(entries.flatMap((e) => e.items), ings)
+  const { setEaten } = useData.getState()
+  const eatenEntries = entries.filter((e) => e.eaten)
+  const t = totals(eatenEntries.flatMap((e) => e.items), ings)
+  const all = totals(entries.flatMap((e) => e.items), ings)
+  const toEat = all.kcal - t.kcal
   const left = targets.kcal - t.kcal
   const d = fromKey(day)
   const hour = new Date().getHours()
@@ -74,21 +83,22 @@ export default function Home() {
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-mint-300/60 blur-3xl" />
           <div className="absolute -left-10 -bottom-12 w-32 h-32 rounded-full bg-apricot/30 blur-3xl" />
           <div className="relative flex items-center gap-5">
-            <Ring value={t.kcal} target={targets.kcal} />
+            <Ring value={t.kcal} planned={all.kcal} target={targets.kcal} />
             <div className="flex-1 min-w-0">
               <div className="text-[13px] opacity-55">{left >= 0 ? 'Left to eat' : 'Over target'}</div>
               <div className={`text-[30px] font-normal leading-tight tracking-tight ${left >= 0 ? 'text-[#D9822B]' : 'text-coral'}`}>
                 {r0(Math.abs(left))}<span className="text-[14px] font-semibold opacity-60 text-forest-900"> kcal</span>
               </div>
               <div className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-semibold bg-white/60 rounded-full px-2.5 py-1">
-                <Utensils size={13} />{entries.length} {entries.length === 1 ? 'meal' : 'meals'} logged
+                <Utensils size={13} />{eatenEntries.length} of {entries.length} eaten
               </div>
+              {toEat > 0.5 && <div className="text-[12px] opacity-55 mt-1.5">{r0(toEat)} kcal planned still to eat</div>}
             </div>
           </div>
           <div className="relative grid gap-3 mt-5">
-            <MacroBar label="Protein" value={t.p} target={targets.p} gradient={GRAD.p} />
-            <MacroBar label="Carbs" value={t.c} target={targets.c} gradient={GRAD.c} />
-            <MacroBar label="Fat" value={t.f} target={targets.f} gradient={GRAD.f} />
+            <MacroBar label="Protein" value={t.p} planned={all.p} target={targets.p} gradient={GRAD.p} />
+            <MacroBar label="Carbs" value={t.c} planned={all.c} target={targets.c} gradient={GRAD.c} />
+            <MacroBar label="Fat" value={t.f} planned={all.f} target={targets.f} gradient={GRAD.f} />
           </div>
           <button type="button" aria-expanded={microsOpen} className="tap relative w-full mt-4 pt-3 border-t border-forest-900/10 flex items-center justify-between text-[13px] font-semibold opacity-80"
             onClick={() => setMicrosOpen((o) => !o)}>
@@ -105,7 +115,7 @@ export default function Home() {
         <section>
           <div className="flex items-baseline justify-between px-1 mb-2">
             <h2 className="text-[18px] font-semibold">{day === today ? "Today's meals" : 'Meals'}</h2>
-            {entries.length > 0 && <span className="text-[13px] opacity-60">Tap to adjust</span>}
+            {entries.length > 0 && <span className="text-[13px] opacity-60">Tick ✓ when eaten</span>}
           </div>
           {entries.length ? (
             <div className="space-y-2.5">
@@ -114,12 +124,14 @@ export default function Home() {
                   const et = totals(e.items, ings)
                   const edited = !sameItems(e.items, e.base)
                   return (
-                    <button key={e.id} type="button" className="tap card w-full text-left p-3.5 flex items-center gap-3 slide" onClick={() => openEntry(e.id)}>
+                    <div key={e.id} className={`card flex items-center slide ${e.eaten ? '' : 'opacity-[.92]'}`}>
+                    <button type="button" className="tap flex-1 min-w-0 text-left p-3.5 pr-1 flex items-center gap-3" onClick={() => openEntry(e.id)}>
                       <TypeBadge type={e.type} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: ty.accent }}>{ty.label}</span>
                           {edited && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-peach text-[#B5561F]">EDITED</span>}
+                          {!e.eaten && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full tint opacity-70">PLANNED</span>}
                         </div>
                         <div className="text-[15px] font-bold truncate mt-0.5">{e.name}</div>
                         <div className="mt-1.5"><MacroChips t={et} /></div>
@@ -129,6 +141,17 @@ export default function Home() {
                         <div className="text-[11px] opacity-60 mt-1">kcal</div>
                       </div>
                     </button>
+                    <button type="button" role="checkbox" aria-checked={!!e.eaten} aria-label={`${e.name} eaten`}
+                      className="tap w-14 self-stretch flex items-center justify-center shrink-0"
+                      onClick={() => {
+                        setEaten(day, e.id, !e.eaten)
+                        say(e.eaten ? 'Marked as not eaten. Stock put back' : 'Eaten. Taken off your stock')
+                      }}>
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center ${e.eaten ? 'btn-dark' : 'border-2 border-forest-900/25 bg-white/60'}`}>
+                        {e.eaten && <Check size={17} />}
+                      </span>
+                    </button>
+                    </div>
                   )
                 }),
               )}

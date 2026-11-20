@@ -2,7 +2,7 @@ import { Check, ChevronRight, History, Package, PencilLine, Plus, Search, Star }
 import { useState } from 'react'
 import { BackButton, Page } from '../components/ui'
 import { blankIngDraft } from './IngForm'
-import { defaultQty, perText, r0, r1 } from '../lib/nutrition'
+import { amountText, defaultQty, perText, r0 } from '../lib/nutrition'
 import { useData } from '../lib/store'
 import type { Ingredient } from '../lib/types'
 import { useUI } from '../lib/ui'
@@ -72,7 +72,7 @@ export default function Picker() {
                       <div className="text-[15px] font-semibold truncate flex items-center gap-1.5">
                         {favs.includes(g.id) && <Star size={13} className="text-apricot shrink-0" fill="#F4A261" />}{g.name}
                       </div>
-                      <div className="text-[12px] opacity-60">{r0(g.kcal)} kcal per {perText(g.unit)} · P {r1(g.p)} · C {r1(g.c)} · F {r1(g.f)}</div>
+                      <div className="text-[12px]"><span className={g.stock ? 'font-bold text-forest-700' : 'opacity-50'}>{g.stock ? `${amountText(g.unit, g.stock)} in stock` : 'None in stock'}</span><span className="opacity-60"> · {r0(g.kcal)} kcal per {perText(g.unit)}</span></div>
                     </div>
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${has ? 'tint' : 'bg-mint-300'}`}>{has ? <Check size={16} /> : <Plus size={16} />}</span>
                   </button>

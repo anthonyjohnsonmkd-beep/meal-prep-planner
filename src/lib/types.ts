@@ -25,6 +25,10 @@ export interface Ingredient {
   pack?: number
   /** Marked as running low: always goes on the shopping list. */
   low?: boolean
+  /** Raw amount at home, in the ingredient's unit (pieces, g or ml). */
+  stock?: number
+  /** Put it on the shopping list when stock drops below this. */
+  lowAt?: number
 }
 
 /** qty is a count for `piece`, otherwise grams or millilitres, weighed raw unless `cooked`. */
@@ -50,6 +54,8 @@ export interface Entry {
   name: string
   items: Item[]
   base: Item[]
+  /** Ticked as eaten: its raw amounts have been taken off stock. */
+  eaten?: boolean
 }
 
 export interface Targets {
