@@ -50,7 +50,7 @@ export default function Pantry() {
       </header>
       <main className="px-4 space-y-4">
         <div className="flex gap-2">
-          <button type="button" className="tap flex-1 h-14 rounded-[20px] btn-warm text-[16px] font-semibold flex items-center justify-center gap-2" onClick={() => go('restock')}>
+          <button type="button" className="tap flex-1 h-14 rounded-[20px] btn-warm text-[16px] font-semibold flex items-center justify-center gap-2" onClick={() => { set({ restockAdds: {} }); go('restock') }}>
             <PackagePlus size={20} />I bought…
           </button>
           <button type="button" className="tap flex-1 h-14 rounded-[20px] soft text-[15px] font-semibold flex items-center justify-center gap-2" onClick={addNew}>

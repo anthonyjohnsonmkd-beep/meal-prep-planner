@@ -11,6 +11,7 @@ A phone-first app for planning, prepping and logging meals with calories, macros
 - **Pantry**: your ingredient list by category, with favourites. Nutrition is entered raw, as on the package, per piece, per 100 g or per 100 ml. Calories are checked against the macros to catch label typos. Optional cooked weight (100 g raw → 75 g cooked), pack size, and a "running low" flag.
 - **Raw or cooked**: in a meal, each weighed ingredient can be marked as weighed raw or cooked. Cooked amounts are converted back to raw for nutrition and shopping.
 - **Stock**: each ingredient tracks how much you have at home. Log groceries with **Pantry → I bought…** (one tap adds a pack) or by finishing a shopping trip. Ticking a meal as eaten takes its raw amounts off stock; unticking puts them back. Optional "warn me below" level puts it on the shopping list.
+- **Barcode scanning**: scan a product with the camera (or type the number) to fill in an ingredient from [Open Food Facts](https://world.openfoodfacts.org), a free public food database. Works in New ingredient, Add ingredient (in a meal) and I bought…. Scanned barcodes are remembered, so the next scan finds the product instantly, even offline. Name search is also available.
 - **What can I make?**: saved meals show how many portions your stock covers, or what's short.
 - **Shop**: a shopping list built from the planned meals for the days you shop for (today or tomorrow, 3–14 days). Raw amounts, added up and grouped by aisle, in packs where a pack size is set. Stock is taken off what to buy. Tick items off, add other things, share the list, and finish shopping to add what you bought to stock.
 - **Week**: daily calories against your target and which meals are planned.
@@ -39,4 +40,4 @@ Stack: React, TypeScript, Vite, Tailwind CSS, Zustand (persisted to IndexedDB), 
 
 ## Planned
 
-- Barcode scanning and nutrition-label photos to fill in ingredients
+- Nutrition-label photos to fill in products that aren't in the database

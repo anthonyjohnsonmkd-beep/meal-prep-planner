@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Toast } from './components/ui'
 import { todayKey } from './lib/dates'
 import { useData } from './lib/store'
@@ -12,9 +12,13 @@ import Library from './screens/Library'
 import Pantry from './screens/Pantry'
 import Picker from './screens/Picker'
 import { ConfirmSheet, ShopItemSheet, TypeSheet } from './screens/Sheets'
+import FoodSearch from './screens/FoodSearch'
 import Restock from './screens/Restock'
 import Shop from './screens/Shop'
 import Week from './screens/Week'
+
+// The barcode reader is large, so it only loads when the scanner is opened.
+const Scanner = lazy(() => import('./components/Scanner'))
 
 function useHydrated() {
   const [ok, setOk] = useState(useData.persist.hasHydrated())
@@ -49,6 +53,7 @@ export default function App() {
   useDayRollover()
   const screen = useUI(currentScreen)
   const sheet = useUI((s) => s.sheet)
+  const scanner = useUI((s) => s.scanner)
   if (!ready) return <div className="min-h-screen" aria-busy="true" />
 
   const view = {
@@ -59,6 +64,7 @@ export default function App() {
     pantry: <Pantry />,
     shop: <Shop />,
     restock: <Restock />,
+    foodSearch: <FoodSearch />,
     goals: <Goals />,
     builder: <Builder />,
     picker: <Picker />,
@@ -72,6 +78,11 @@ export default function App() {
       {sheet?.kind === 'type' && <TypeSheet />}
       {sheet?.kind === 'confirm' && <ConfirmSheet />}
       {sheet?.kind === 'shopItem' && <ShopItemSheet />}
+      {scanner && (
+        <Suspense fallback={<div className="fixed inset-0 z-[70] bg-[#0b1f17]" aria-busy="true" />}>
+          <Scanner />
+        </Suspense>
+      )}
       <Toast />
     </>
   )

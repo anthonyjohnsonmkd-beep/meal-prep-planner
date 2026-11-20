@@ -3,7 +3,7 @@ import { todayKey } from './dates'
 import type { Category, Item, MealType, MicroKey, Unit } from './types'
 
 export type Tab = 'home' | 'week' | 'library' | 'pantry' | 'shop'
-export type ScreenName = Tab | 'goals' | 'libraryAdd' | 'builder' | 'picker' | 'ingForm' | 'entry' | 'restock'
+export type ScreenName = Tab | 'goals' | 'libraryAdd' | 'builder' | 'picker' | 'ingForm' | 'entry' | 'restock' | 'foodSearch'
 
 export interface MealDraft {
   id: string | null
@@ -32,6 +32,11 @@ export interface IngDraft {
   low: boolean
   stock: string
   lowAt: string
+  barcode?: string
+  /** Filled from the food database: show a "check against the label" note. */
+  fromDb?: boolean
+  /** After saving, go back to the "I bought…" screen and add this amount. */
+  thenRestock?: boolean
 }
 
 export type Sheet =
@@ -50,6 +55,10 @@ interface UI {
   /** Waiting for a cooked-weight ratio before switching this ingredient to cooked. */
   pendingCook: { ing: string; target: 'draft' | 'entry' } | null
   sheet: Sheet
+  /** Camera scanner overlay and what the scanned code is for. */
+  scanner: { purpose: 'pantry' | 'meal' | 'restock' | 'form' } | null
+  /** Amounts picked on the "I bought…" screen, kept while scanning or creating ingredients. */
+  restockAdds: Record<string, number>
   toast: { id: number; text: string } | null
   go: (s: ScreenName) => void
   back: () => void
@@ -69,6 +78,8 @@ export const useUI = create<UI>()((set, get) => ({
   edit: null,
   pendingCook: null,
   sheet: null,
+  scanner: null,
+  restockAdds: {},
   toast: null,
   go: (s) => {
     set({ stack: [...get().stack, s] })

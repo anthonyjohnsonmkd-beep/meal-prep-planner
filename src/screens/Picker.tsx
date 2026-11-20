@@ -1,4 +1,4 @@
-import { Check, ChevronRight, History, Package, PencilLine, Plus, Search, Star } from 'lucide-react'
+import { Check, ChevronRight, History, Package, PencilLine, Plus, ScanBarcode, Search, Star } from 'lucide-react'
 import { useState } from 'react'
 import { BackButton, Page } from '../components/ui'
 import { blankIngDraft } from './IngForm'
@@ -52,6 +52,9 @@ export default function Picker() {
         </label>
       </header>
       <main className="px-4 space-y-4">
+        <button type="button" className="tap w-full h-12 rounded-[16px] btn-warm text-[15px] font-bold flex items-center justify-center gap-2" onClick={() => set({ scanner: { purpose: 'meal' } })}>
+          <ScanBarcode size={19} />Scan a barcode
+        </button>
         <button type="button" className="tap w-full rounded-[22px] btn-dark p-4 flex items-center gap-3 text-left" onClick={createNew}>
           <div className="w-12 h-12 rounded-[16px] btn-warm flex items-center justify-center shrink-0"><PencilLine size={22} /></div>
           <div className="flex-1">

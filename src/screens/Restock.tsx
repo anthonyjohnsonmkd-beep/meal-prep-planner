@@ -1,4 +1,4 @@
-import { Check, History, Minus, Package, Plus, Search, Star } from 'lucide-react'
+import { Check, History, Minus, Package, Plus, ScanBarcode, Search, Star } from 'lucide-react'
 import { useState } from 'react'
 import { BackButton, CatBadge, Footer, Page, Primary } from '../components/ui'
 import { amountText } from '../lib/nutrition'
@@ -17,7 +17,8 @@ export default function Restock() {
   const used = useData((s) => s.used)
   const addStock = useData((s) => s.addStock)
   const [q, setQ] = useState('')
-  const [adds, setAdds] = useState<Record<string, number>>({})
+  const adds = useUI((s) => s.restockAdds)
+  const set = useUI((s) => s.set)
   const query = q.trim().toLowerCase()
   const match = (g: Ingredient) => !query || g.name.toLowerCase().includes(query)
   const picked = Object.entries(adds).filter(([, v]) => v > 0)
@@ -32,10 +33,11 @@ export default function Restock() {
     { title: favList.length || recent.length ? 'All ingredients' : 'My ingredients', Icon: Package, list: rest.filter(match) },
   ].filter((g) => g.list.length)
 
-  const change = (g: Ingredient, v: number) => setAdds((a) => ({ ...a, [g.id]: Math.max(0, v) }))
+  const change = (g: Ingredient, v: number) => set({ restockAdds: { ...useUI.getState().restockAdds, [g.id]: Math.max(0, v) } })
   const save = () => {
     if (!picked.length) return say('Add at least one thing you bought')
     addStock(Object.fromEntries(picked))
+    set({ restockAdds: {} })
     back()
     say(`Added ${picked.length} ${picked.length === 1 ? 'item' : 'items'} to your stock`)
   }
@@ -43,8 +45,13 @@ export default function Restock() {
   return (
     <Page className="pb-36 slide">
       <header className="pt-safe px-4 pb-3 bg-white/30 backdrop-blur-xl sticky top-0 z-20">
-        <div className="flex items-center gap-3 mb-1"><BackButton close /><h1 className="text-[22px] font-semibold">I bought…</h1></div>
-        <p className="text-[13px] opacity-60 mb-3 px-1">Add what you brought home. Tap + for one pack, or type the amount.</p>
+        <div className="flex items-center gap-3 mb-1">
+          <BackButton close /><h1 className="text-[22px] font-semibold flex-1">I bought…</h1>
+          <button type="button" className="tap h-11 px-4 rounded-full btn-warm text-[14px] font-bold flex items-center gap-1.5" onClick={() => set({ scanner: { purpose: 'restock' } })}>
+            <ScanBarcode size={18} />Scan
+          </button>
+        </div>
+        <p className="text-[13px] opacity-60 mb-3 px-1">Scan each product, or tap + for one pack, or type the amount.</p>
         <label className="field h-12 px-4 rounded-[16px] soft border-2 flex items-center gap-2">
           <Search size={18} className="opacity-40" /><span className="sr-only">Search ingredients</span>
           <input id="restock-search" className="w-full text-[15px]" placeholder="Search my ingredients" value={q} onChange={(e) => setQ(e.target.value)} />

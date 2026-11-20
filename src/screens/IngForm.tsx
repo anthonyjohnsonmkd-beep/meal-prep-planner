@@ -1,4 +1,4 @@
-import { Check, CircleCheck, CookingPot, Info, ShoppingBasket, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, CircleCheck, CookingPot, Database, Info, ScanBarcode, ShoppingBasket, Trash2, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { BackButton, CAT_ICON, Footer, IconButton, Label, Page, Primary, Stepper } from '../components/ui'
 import { CATS, MICROS } from '../lib/constants'
@@ -61,7 +61,7 @@ function MacroHint({ d }: { d: IngDraft }) {
 }
 
 export default function IngForm() {
-  const { ingDraft: d, draft, set, back, say } = useUI()
+  const { ingDraft: d, draft, set, go, back, say } = useUI()
   const meals = useData((s) => s.meals)
   const saveIngredient = useData((s) => s.saveIngredient)
   const deleteIngredient = useData((s) => s.deleteIngredient)
@@ -97,6 +97,7 @@ export default function IngForm() {
       low: d.low || undefined,
       stock: num(d.stock) > 0 ? num(d.stock) : undefined,
       lowAt: d.lowAt.trim() !== '' && num(d.lowAt) > 0 ? num(d.lowAt) : undefined,
+      barcode: d.barcode || undefined,
     }
     const id = saveIngredient(vals, d.editId)
     if (inMeal && draft) {
@@ -117,6 +118,14 @@ export default function IngForm() {
           if (e) useData.getState().setEntryItems(ui.edit.day, e.id, mark(e.items))
         }
       }
+    }
+    if (d.thenRestock && !edit) {
+      // Scanned in "I bought…": go back there with one pack of the new product added.
+      const ui = useUI.getState()
+      const step = vals.pack ?? (vals.unit === 'piece' ? 1 : 100)
+      set({ ingDraft: null, restockAdds: { ...ui.restockAdds, [id]: (ui.restockAdds[id] ?? 0) + step } })
+      back()
+      return say(`${vals.name} saved and added to what you bought`)
     }
     set({ ingDraft: null })
     back()
@@ -140,6 +149,28 @@ export default function IngForm() {
         {edit && <IconButton label="Delete ingredient" onClick={remove}><Trash2 size={18} /></IconButton>}
       </header>
       <main className="px-4 space-y-5">
+        {!edit && (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="tap h-12 rounded-[16px] btn-dark text-[14px] font-bold flex items-center justify-center gap-2" onClick={() => set({ scanner: { purpose: 'form' } })}>
+              <ScanBarcode size={18} />Scan barcode
+            </button>
+            <button type="button" className="tap h-12 rounded-[16px] soft text-[14px] font-bold flex items-center justify-center gap-2" onClick={() => go('foodSearch')}>
+              <Database size={17} />Search database
+            </button>
+          </div>
+        )}
+        {d.fromDb && (
+          <div className="rounded-[18px] bg-mint-100 px-4 py-3 text-[13px] flex gap-2.5">
+            <Database size={16} className="text-forest-700 shrink-0 mt-0.5" />
+            <span>Filled in from <b>Open Food Facts</b>. Database entries can have mistakes, so check them against the label before saving.</span>
+          </div>
+        )}
+        {d.barcode && !d.fromDb && (
+          <div className="rounded-[18px] bg-peach px-4 py-3 text-[13px] flex gap-2.5">
+            <ScanBarcode size={16} className="text-amber shrink-0 mt-0.5" />
+            <span>Barcode {d.barcode} saved. Enter the values from the label and the next scan will find it.</span>
+          </div>
+        )}
         {locked && (
           <div className="rounded-[18px] bg-peach px-4 py-3 text-[13px] flex gap-2.5">
             <Info size={18} className="text-amber shrink-0 mt-0.5" />

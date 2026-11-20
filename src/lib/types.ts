@@ -29,6 +29,8 @@ export interface Ingredient {
   stock?: number
   /** Put it on the shopping list when stock drops below this. */
   lowAt?: number
+  /** Product barcode (EAN/UPC), so scanning it again finds this ingredient. */
+  barcode?: string
 }
 
 /** qty is a count for `piece`, otherwise grams or millilitres, weighed raw unless `cooked`. */

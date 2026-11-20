@@ -138,7 +138,7 @@ export default function Shop() {
             <div className="w-12 h-12 rounded-[16px] btn-warm flex items-center justify-center mx-auto mb-3"><ShoppingBasket size={24} /></div>
             <div className="text-[16px] font-bold">Nothing to buy yet</div>
             <div className="text-[14px] opacity-60 mt-1">Plan meals for these days and whatever your stock doesn't cover appears here, already added up.</div>
-            <button type="button" className="tap mt-4 h-11 px-5 rounded-full soft text-[14px] font-bold inline-flex items-center gap-2" onClick={() => go('restock')}>
+            <button type="button" className="tap mt-4 h-11 px-5 rounded-full soft text-[14px] font-bold inline-flex items-center gap-2" onClick={() => { set({ restockAdds: {} }); go('restock') }}>
               <Plus size={16} />Bought without a list? Add to stock
             </button>
           </div>
